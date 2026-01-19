@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Formset</title></head>
+<body>
+<form method="post">
+{{ formset.management_form }}
+{% for form in formset %}
+{{ form.as_p }}
+{% endfor %}
+<button type="submit">Submit</button>
+</form>
+</body>
+</html>

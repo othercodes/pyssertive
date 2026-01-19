@@ -1,0 +1,55 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Lint
+        run: uv run ruff check src/ tests/
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Get tag version
+        id: tag
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            return context.ref.replace('refs/tags/', '')
+
+      - name: Update version
+        run: |
+          sed -i 's/version = ".*"/version = "${{ steps.tag.outputs.result }}"/' pyproject.toml
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          uv pip install twine
+          uv run twine upload dist/*
