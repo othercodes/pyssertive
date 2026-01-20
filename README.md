@@ -14,6 +14,7 @@ Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant tes
 - Form and formset error assertions
 - Session and cookie assertions
 - Header assertions
+- Streaming response and file download assertions
 - Debug helpers for test development
 
 ## Requirements
@@ -87,6 +88,21 @@ response.assert_session_has("user_id", 123)\
 response.assert_template_used("users/list.html")\
     .assert_context_has("users")\
     .assert_context_equals("page", 1)
+```
+
+### Streaming and Download Assertions
+
+```python
+response.assert_streaming()\
+    .assert_download("report.csv")\
+    .assert_streaming_contains("Expected content")\
+    .assert_streaming_not_contains("Sensitive data")\
+    .assert_streaming_matches(r"ID:\d+")\
+    .assert_streaming_line_count(exact=10)\
+    .assert_streaming_line_count(min=5, max=20)\
+    .assert_streaming_csv_header(["id", "name", "email"])\
+    .assert_streaming_line(0, "header,row")\
+    .assert_streaming_empty()
 ```
 
 ### Debug Helpers
