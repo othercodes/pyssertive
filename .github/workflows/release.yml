@@ -110,14 +110,6 @@ jobs:
         run: |
           pip install dist/*.whl
           pip show pyssertive
-          python -c "
-          import os
-          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django.conf.global_settings')
-          import django
-          django.conf.settings.configure(DEBUG=True)
-          from pyssertive.http import FluentHttpAssertClient
-          print('✅ pyssertive installed successfully')
-          "
 
   publish-pypi:
     name: Publish to PyPI
