@@ -209,3 +209,47 @@ def cookie_detailed_view(request: HttpRequest) -> HttpResponse:
     response.set_cookie("detailed", "value", max_age=3600, path="/api/")
     response.set_cookie("maxage_only", "value", max_age=7200)
     return response
+
+
+def streaming_csv_view(request: HttpRequest) -> HttpResponse:
+    from django.http import StreamingHttpResponse
+
+    def generate_csv():
+        yield "Name,Email,Age\r\n"
+        yield "John,john@example.com,30\r\n"
+        yield "Jane,jane@example.com,25\r\n"
+        yield "Bob,bob@example.com,35\r\n"
+
+    response = StreamingHttpResponse(generate_csv(), content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="users.csv"'
+    return response
+
+
+def streaming_text_view(request: HttpRequest) -> HttpResponse:
+    from django.http import StreamingHttpResponse
+
+    def generate_text():
+        yield "Line 1\n"
+        yield "Line 2\n"
+        yield "Line 3\n"
+
+    return StreamingHttpResponse(generate_text(), content_type="text/plain")
+
+
+def streaming_empty_view(request: HttpRequest) -> HttpResponse:
+    from django.http import StreamingHttpResponse
+
+    def generate_empty():
+        yield ""
+
+    return StreamingHttpResponse(generate_empty(), content_type="text/plain")
+
+
+def download_view(request: HttpRequest) -> HttpResponse:
+    response = HttpResponse("file content here", content_type="application/octet-stream")
+    response["Content-Disposition"] = 'attachment; filename="report.txt"'
+    return response
+
+
+def inline_view(request: HttpRequest) -> HttpResponse:
+    return HttpResponse("inline content", content_type="text/plain")

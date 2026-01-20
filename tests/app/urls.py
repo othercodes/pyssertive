@@ -46,4 +46,10 @@ urlpatterns = [
     path("cookie-set/", views.cookie_set_view),
     path("cookie-expire/", views.cookie_expire_view),
     path("cookie-detailed/", views.cookie_detailed_view),
+    # Streaming and download endpoints
+    path("streaming-csv/", views.streaming_csv_view),
+    path("streaming-text/", views.streaming_text_view),
+    path("streaming-empty/", views.streaming_empty_view),
+    path("download/", views.download_view),
+    path("inline/", views.inline_view),
 ]

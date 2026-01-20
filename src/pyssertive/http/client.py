@@ -11,6 +11,7 @@ from pyssertive.http.assertions import (
     HTMLContentAssertionsMixin,
     HttpStatusAssertionsMixin,
     JsonContentAssertionsMixin,
+    StreamingAssertionsMixin,
 )
 from pyssertive.http.debug import DebugResponseMixin
 from pyssertive.http.django import (
@@ -24,6 +25,7 @@ class FluentResponse(
     DebugResponseMixin,
     SessionAssertionsMixin,
     CookieAssertionsMixin,
+    StreamingAssertionsMixin,
     TemplateContextAssertionsMixin,
     FormValidationAssertionsMixin,
     HTMLContentAssertionsMixin,
