@@ -3,7 +3,7 @@ name = "pyssertive"
 version = "0.1.0"
 description = "Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant testing API."
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = { text = "MIT" }
 requires-python = ">=3.11"
 authors = [
     { name = "Unay Santisteban", email = "usantisteban@othercode.io" }
