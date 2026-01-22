@@ -154,8 +154,9 @@ jobs:
             echo "⚠️ Typecheck failed (non-blocking)"
           fi
 
-          if [ "${{ needs.sonarcloud.result }}" == "failure" ]; then
-            echo "⚠️ SonarCloud failed (non-blocking)"
+          if [ "${{ needs.sonarcloud.result }}" != "success" ]; then
+            echo "❌ SonarCloud failed"
+            exit 1
           fi
 
           echo "✅ All required checks passed!"
