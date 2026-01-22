@@ -1,6 +1,7 @@
 # pyssertive
 
 [![Build Status](https://github.com/othercodes/pyssertive/actions/workflows/test.yml/badge.svg)](https://github.com/othercodes/pyssertive/actions/workflows/test.yml)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=othercodes_pyssertive&metric=coverage)](https://sonarcloud.io/summary/new_code?id=othercodes_pyssertive)
 
 Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant testing API.
 
@@ -130,7 +131,3 @@ assert_model_count(User, 5)
 with assert_num_queries(2):
     list(User.objects.all())
 ```
-
-## License
-
-Apache License 2.0
