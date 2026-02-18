@@ -81,6 +81,7 @@ uv.lock
 # claude and other AI tool files
 .claude/
 .serena/
+.omc/
 
 # Mac OS files
 .DS_Store
