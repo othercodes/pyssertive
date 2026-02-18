@@ -92,35 +92,35 @@ class FluentHttpAssertClient:
 
     def get(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.get(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def post(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.post(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def put(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.put(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def patch(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.patch(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def delete(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.delete(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def head(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.head(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def options(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.options(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def trace(self, *args: Any, **kwargs: Any) -> FluentResponse:
         response = self._client.trace(*args, **kwargs)
-        return FluentResponse(response)
+        return FluentResponse(response)  # type: ignore[arg-type]
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._client, name)

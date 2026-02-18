@@ -31,21 +31,21 @@ def assert_num_queries(expected: int) -> Generator[None, Any, None]:
 
 
 def assert_model_exists(model: type[Model], **filters) -> None:
-    assert model.objects.filter(**filters).exists(), f"{model.__name__} does not exist with filters: {filters}"
+    assert model.objects.filter(**filters).exists(), f"{model.__name__} does not exist with filters: {filters}"  # type: ignore[attr-defined]
 
 
 def assert_model_not_exists(model: type[Model], **filters) -> None:
-    assert not model.objects.filter(**filters).exists(), f"{model.__name__} unexpectedly exists with filters: {filters}"
+    assert not model.objects.filter(**filters).exists(), f"{model.__name__} unexpectedly exists with filters: {filters}"  # type: ignore[attr-defined]
 
 
 def assert_model_count(model: type[Model], expected: int, **filters) -> None:
-    actual = model.objects.filter(**filters).count()
+    actual = model.objects.filter(**filters).count()  # type: ignore[attr-defined]
     assert actual == expected, f"Expected {expected} records for {model.__name__}, got {actual}"
 
 
 def assert_model_soft_deleted(model: type[Model], **filters) -> None:
     """Assumes model uses soft-deletion with a `deleted_at` datetime field."""
-    obj = model.objects.filter(**filters).first()
+    obj = model.objects.filter(**filters).first()  # type: ignore[attr-defined]
     assert obj is not None, f"{model.__name__} does not exist with filters: {filters}"
     assert hasattr(obj, "deleted_at"), f"{model.__name__} has no 'deleted_at' field"
     assert obj.deleted_at is not None, f"{model.__name__} is not soft deleted"
