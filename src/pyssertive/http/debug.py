@@ -29,13 +29,13 @@ class DebugResponseMixin:
             case _:
                 print(repr(self._response.content))
 
-        return self  # type: ignore[return-value]
+        return self
 
     def dump_headers(self) -> Self:
         print("\n[Response Headers]")
         for key, value in self._response.headers.items():
             print(f"  {key}: {value}")
-        return self  # type: ignore[return-value]
+        return self
 
     def dump_json(self) -> Self:
         print("\n[Response JSON]")
@@ -44,20 +44,20 @@ class DebugResponseMixin:
             print(json.dumps(data, indent=2, default=str))
         except JSONDecodeError:
             raise AssertionError("Response content is not valid JSON") from None
-        return self  # type: ignore[return-value]
+        return self
 
     def dump_session(self) -> Self:
         print("\n[Session Data]")
         if not hasattr(self._response, "wsgi_request"):
             print("  (no request context available)")
-            return self  # type: ignore[return-value]
+            return self
         session = dict(self._response.wsgi_request.session)
         if session:
             for key, value in session.items():
                 print(f"  {key}: {value!r}")
         else:
             print("  (empty)")
-        return self  # type: ignore[return-value]
+        return self
 
     def dump_cookies(self) -> Self:
         print("\n[Response Cookies]")
@@ -71,7 +71,7 @@ class DebugResponseMixin:
                     print(f"    path: {cookie['path']}")
         else:
             print("  (none)")
-        return self  # type: ignore[return-value]
+        return self
 
     def dd(self) -> None:
         self.dump()

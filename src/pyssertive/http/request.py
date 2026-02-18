@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from django.contrib.auth.models import AbstractBaseUser
@@ -100,7 +101,7 @@ class RequestBuilder:
         return self
 
     def build(self) -> HttpRequest:
-        method_map = {
+        method_map: dict[str, Callable[..., HttpRequest]] = {
             "GET": self.rf.get,
             "POST": self.rf.post,
             "PUT": self.rf.put,
@@ -113,10 +114,10 @@ class RequestBuilder:
         if self.method not in method_map:
             raise ValueError(f"Unsupported HTTP method: {self.method}")
 
-        request = method_map[self.method](self.path, self.data, headers=self.headers)
+        request: HttpRequest = method_map[self.method](self.path, self.data, headers=self.headers)
 
         if self.user:
-            request.user = self.user
+            request.user = self.user  # type: ignore[assignment]
 
         for key, value in self.cookies.items():
             request.COOKIES[key] = value
