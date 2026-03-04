@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Self
+import sys
+from typing import Any
+
+if sys.version_info >= (3, 11):  # pragma: no cover
+    from typing import Self
+else:  # pragma: no cover
+    from typing_extensions import Self
 
 from django.forms import Form
 from django.forms.formsets import BaseFormSet

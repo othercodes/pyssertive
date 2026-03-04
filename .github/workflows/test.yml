@@ -69,12 +69,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Django 4.2 (Python 3.10–3.12)
+          - python-version: "3.10"
+            django-version: "4.2"
           - python-version: "3.11"
             django-version: "4.2"
           - python-version: "3.12"
-            django-version: "5.0"
+            django-version: "4.2"
+          # Django 5.2 (Python 3.10–3.14)
+          - python-version: "3.10"
+            django-version: "5.2"
+          - python-version: "3.11"
+            django-version: "5.2"
+          - python-version: "3.12"
+            django-version: "5.2"
           - python-version: "3.13"
-            django-version: "5.1"
+            django-version: "5.2"
+          - python-version: "3.14"
+            django-version: "5.2"
+          # Django 6.0 (Python 3.12–3.14)
+          - python-version: "3.12"
+            django-version: "6.0"
+          - python-version: "3.13"
+            django-version: "6.0"
+          - python-version: "3.14"
+            django-version: "6.0"
 
     steps:
       - name: Checkout
@@ -97,7 +116,7 @@ jobs:
         run: uv run pytest --cov=pyssertive --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=100
 
       - name: Upload coverage artifact
-        if: matrix.python-version == '3.13'
+        if: matrix.python-version == '3.14' && matrix.django-version == '6.0'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report

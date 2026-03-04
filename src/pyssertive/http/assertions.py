@@ -3,7 +3,13 @@ from __future__ import annotations
 import html
 import json
 import re
-from typing import Any, Self
+import sys
+from typing import Any
+
+if sys.version_info >= (3, 11):  # pragma: no cover
+    from typing import Self
+else:  # pragma: no cover
+    from typing_extensions import Self
 from urllib.parse import urlparse
 
 from django.http import HttpResponse

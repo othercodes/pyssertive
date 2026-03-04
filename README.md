@@ -20,8 +20,8 @@ Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant tes
 
 ## Requirements
 
-- Python 3.11+
-- Django 4.2+
+- Python 3.10+
+- Django 4.2, 5.2, or 6.0
 
 ## Installation
 
