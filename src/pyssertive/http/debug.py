@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import json
 import pprint
+import sys
 from json import JSONDecodeError
-from typing import Self
+
+if sys.version_info >= (3, 11):  # pragma: no cover
+    from typing import Self
+else:  # pragma: no cover
+    from typing_extensions import Self
 
 from django.http import HttpResponse
 
