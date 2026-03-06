@@ -1,6 +1,6 @@
 [project]
 name = "pyssertive"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant testing API."
 readme = "README.md"
 license = { text = "MIT" }
@@ -40,8 +40,15 @@ Repository = "https://github.com/othercodes/pyssertive.git"
 Issues = "https://github.com/othercodes/pyssertive/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/pyssertive/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyssertive"]
