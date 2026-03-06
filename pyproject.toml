@@ -75,6 +75,7 @@ exclude = [
     ".venv",
     "build",
     "dist",
+    "src/pyssertive/_version.py",
 ]
 
 [tool.ruff.lint]
