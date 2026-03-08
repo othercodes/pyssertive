@@ -89,6 +89,7 @@ addopts = "--cov=pyssertive --cov-report=term-missing --cov-fail-under=100"
 [tool.coverage.run]
 branch = true
 source = ["src/pyssertive"]
+omit = ["src/pyssertive/_version.py"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -99,6 +100,7 @@ exclude_lines = [
 
 [tool.mypy]
 python_version = "3.10"
+exclude = ["src/pyssertive/_version\\.py$"]
 plugins = ["mypy_django_plugin.main"]
 strict = false
 warn_return_any = true
