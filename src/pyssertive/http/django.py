@@ -14,6 +14,8 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.test import SimpleTestCase
 
+_NO_CONTEXT_MSG = "Response has no context"
+
 
 class TemplateContextAssertionsMixin:
     _response: HttpResponse
@@ -27,12 +29,12 @@ class TemplateContextAssertionsMixin:
         return self
 
     def assert_context_has(self, key: str) -> Self:
-        assert hasattr(self._response, "context") and self._response.context is not None, "Response has no context"
+        assert hasattr(self._response, "context") and self._response.context is not None, _NO_CONTEXT_MSG
         assert key in self._response.context, f"Expected context to contain '{key}'"
         return self
 
     def assert_context_equals(self, key: str, expected: object) -> Self:
-        assert hasattr(self._response, "context") and self._response.context is not None, "Response has no context"
+        assert hasattr(self._response, "context") and self._response.context is not None, _NO_CONTEXT_MSG
         assert key in self._response.context, f"Expected context to contain '{key}'"
         actual = self._response.context[key]
         assert actual == expected, f"Expected context['{key}'] == {expected}, got {actual}"
@@ -44,7 +46,7 @@ class FormValidationAssertionsMixin:
 
     def assert_form_error(self, form: str, field: str, error: str | list[str]) -> Self:
         assert isinstance(self._response, TemplateResponse), "Response must be a TemplateResponse"
-        assert hasattr(self._response, "context"), "Response has no context"
+        assert hasattr(self._response, "context"), _NO_CONTEXT_MSG
         assert form in self._response.context, f"'{form}' not found in response context"
 
         form_obj = self._response.context[form]
@@ -55,7 +57,7 @@ class FormValidationAssertionsMixin:
 
     def assert_formset_error(self, formset: str, form_index: int, field: str, error: str | list[str]) -> Self:
         assert isinstance(self._response, TemplateResponse), "Response must be a TemplateResponse"
-        assert hasattr(self._response, "context"), "Response has no context"
+        assert hasattr(self._response, "context"), _NO_CONTEXT_MSG
         assert formset in self._response.context, f"'{formset}' not found in response context"
 
         formset_obj = self._response.context[formset]
