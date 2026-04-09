@@ -83,5 +83,5 @@ def test_client_proxies_attributes(fluent_admin_client):
 @pytest.mark.django_db
 def test_fluent_chaining(fluent_admin_client):
     response = fluent_admin_client.get("/json/")
-    result = response.assert_ok().assert_json().assert_json_path("ok", True).assert_content_type("application/json")
+    result = response.assert_ok().assert_json_path("ok", True).assert_content_type("application/json")
     assert result is response

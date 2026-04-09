@@ -415,10 +415,12 @@ def test_assert_content_type_fails_for_wrong_type(fluent_admin_client):
 
 
 @pytest.mark.django_db
-def test_assert_json(fluent_admin_client):
+def test_assert_json_returns_assertable_json(fluent_admin_client):
+    from pyssertive.http.json import AssertableJson
+
     response = fluent_admin_client.get("/json/")
     result = response.assert_json()
-    assert result is response
+    assert isinstance(result, AssertableJson)
 
 
 @pytest.mark.django_db
@@ -494,7 +496,7 @@ def test_assert_json_count_with_path(fluent_admin_client):
 @pytest.mark.django_db
 def test_assert_json_count_without_path(fluent_admin_client):
     response = fluent_admin_client.get("/json-list/")
-    with pytest.raises(AssertionError, match="Expected a list"):
+    with pytest.raises(AssertionError, match="Expected 3 items"):
         response.assert_json_count(3)
 
 
@@ -506,9 +508,9 @@ def test_assert_json_count_fails_for_wrong_count(fluent_admin_client):
 
 
 @pytest.mark.django_db
-def test_assert_json_count_fails_for_non_list(fluent_admin_client):
+def test_assert_json_count_fails_for_non_countable(fluent_admin_client):
     response = fluent_admin_client.get("/json/")
-    with pytest.raises(AssertionError, match="Expected a list"):
+    with pytest.raises(AssertionError, match="countable"):
         response.assert_json_count(1, path="ok")
 
 
@@ -556,7 +558,7 @@ def test_assert_json_structure_fails_for_wrong_type(fluent_admin_client):
 @pytest.mark.django_db
 def test_assert_json_structure_fails_for_non_object(fluent_admin_client):
     response = fluent_admin_client.get("/json-array/")
-    with pytest.raises(AssertionError, match="Expected JSON object"):
+    with pytest.raises(AssertionError, match="Expected JSON dict"):
         response.assert_json_structure({"key": str})
 
 
@@ -610,31 +612,81 @@ def test_assert_json_missing_path_through_array(fluent_admin_client):
 
 
 @pytest.mark.django_db
-def test_assert_json_is_array(fluent_admin_client):
+def test_assert_json_is_list(fluent_admin_client):
     response = fluent_admin_client.get("/json-array/")
-    result = response.assert_json_is_array()
+    result = response.assert_json_is_list()
     assert result is response
 
 
 @pytest.mark.django_db
-def test_assert_json_is_array_fails_for_object(fluent_admin_client):
+def test_assert_json_is_list_fails_for_dict(fluent_admin_client):
     response = fluent_admin_client.get("/json/")
-    with pytest.raises(AssertionError, match="Expected JSON array"):
-        response.assert_json_is_array()
+    with pytest.raises(AssertionError, match="Expected JSON list"):
+        response.assert_json_is_list()
 
 
 @pytest.mark.django_db
-def test_assert_json_is_object(fluent_admin_client):
+def test_assert_json_is_dict(fluent_admin_client):
     response = fluent_admin_client.get("/json/")
-    result = response.assert_json_is_object()
+    result = response.assert_json_is_dict()
     assert result is response
 
 
 @pytest.mark.django_db
-def test_assert_json_is_object_fails_for_array(fluent_admin_client):
+def test_assert_json_is_dict_fails_for_list(fluent_admin_client):
     response = fluent_admin_client.get("/json-array/")
-    with pytest.raises(AssertionError, match="Expected JSON object"):
-        response.assert_json_is_object()
+    with pytest.raises(AssertionError, match="Expected JSON dict"):
+        response.assert_json_is_dict()
+
+
+@pytest.mark.django_db
+def test_assert_json_is_array_deprecated_alias_still_works(fluent_admin_client):
+    response = fluent_admin_client.get("/json-array/")
+    with pytest.warns(DeprecationWarning, match="assert_json_is_array"):
+        result = response.assert_json_is_array()
+    assert result is response
+
+
+@pytest.mark.django_db
+def test_assert_json_is_object_deprecated_alias_still_works(fluent_admin_client):
+    response = fluent_admin_client.get("/json/")
+    with pytest.warns(DeprecationWarning, match="assert_json_is_object"):
+        result = response.assert_json_is_object()
+    assert result is response
+
+
+@pytest.mark.django_db
+def test_assert_json_with_path_and_callback_returns_response(fluent_admin_client):
+    response = fluent_admin_client.get("/json-nested/")
+    result = response.assert_json("user", lambda u: u.where("name", "John"))
+    assert result is response
+
+
+@pytest.mark.django_db
+def test_assert_json_with_path_returns_scoped_assertable(fluent_admin_client):
+    from pyssertive.http.json import AssertableJson
+
+    response = fluent_admin_client.get("/json-nested/")
+    scoped = response.assert_json("user")
+    assert isinstance(scoped, AssertableJson)
+    scoped.where("name", "John")
+
+
+@pytest.mark.django_db
+def test_assert_json_caches_parsed_data(fluent_admin_client):
+    response = fluent_admin_client.get("/json/")
+    first = response.assert_json()
+    second = response.assert_json()
+    assert first is second
+
+
+@pytest.mark.django_db
+def test_assert_json_scoping_does_not_mutate_cache(fluent_admin_client):
+    response = fluent_admin_client.get("/json-nested/")
+    root_before = response.assert_json()
+    response.assert_json("user", lambda u: u.where("name", "John"))
+    root_after = response.assert_json()
+    assert root_before is root_after
 
 
 @pytest.mark.django_db
