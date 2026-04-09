@@ -8,7 +8,6 @@ from django.test import Client
 from pyssertive.http.assertions import (
     CookieAssertionsMixin,
     HeaderAssertionsMixin,
-    HTMLContentAssertionsMixin,
     HttpStatusAssertionsMixin,
     JsonContentAssertionsMixin,
     StreamingAssertionsMixin,
@@ -19,6 +18,7 @@ from pyssertive.http.django import (
     SessionAssertionsMixin,
     TemplateContextAssertionsMixin,
 )
+from pyssertive.http.html import HTMLContentAssertionsMixin
 
 
 class FluentResponse(

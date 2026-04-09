@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import json
 import re
 import sys
@@ -13,8 +12,6 @@ else:  # pragma: no cover
 from urllib.parse import urlparse
 
 from django.http import HttpResponse
-from django.test import SimpleTestCase
-from django.utils.html import strip_tags
 
 
 class HttpStatusAssertionsMixin:
@@ -150,51 +147,6 @@ class HeaderAssertionsMixin:
     def assert_content_type(self, expected: str) -> Self:
         actual = self._response.headers.get("Content-Type")
         assert actual == expected, f"Expected Content-Type '{expected}', got '{actual}'"
-        return self
-
-
-class HTMLContentAssertionsMixin:
-    _response: HttpResponse
-
-    def assert_see(self, text: str) -> Self:
-        body = html.unescape(self._response.content.decode("utf-8", errors="replace"))
-        body = re.sub(r"\s+", " ", body).strip()
-        assert text in body, f"Expected to see '{text}', got: {body}"
-        return self
-
-    def assert_dont_see(self, text: str) -> Self:
-        body = html.unescape(self._response.content.decode("utf-8", errors="replace"))
-        body = re.sub(r"\s+", " ", body).strip()
-        assert text not in body, f"Did not expect to see '{text}', got: {body}"
-        return self
-
-    def assert_see_text(self, text: str) -> Self:
-        plain = html.unescape(strip_tags(self._response.content.decode("utf-8", errors="replace")))
-        plain = re.sub(r"\s+", " ", plain).strip()
-        assert text in plain, f"Expected to see plain text '{text}', got: {plain}"
-        return self
-
-    def assert_dont_see_text(self, text: str) -> Self:
-        plain = html.unescape(strip_tags(self._response.content.decode("utf-8", errors="replace")))
-        plain = re.sub(r"\s+", " ", plain).strip()
-        assert text not in plain, f"Did not expect plain text '{text}', got: {plain}"
-        return self
-
-    def assert_see_in_order(self, texts: list[str]) -> Self:
-        body = html.unescape(self._response.content.decode("utf-8", errors="replace"))
-        body = re.sub(r"\s+", " ", body).strip()
-        last_index = -1
-        last_text = ""
-        for key, text in enumerate(texts):
-            index = body.find(text, last_index + 1)
-            message = "" if last_text == "" else f"after '{last_text}'"
-            assert index != -1, f"'{text}' ({key}) not found {message}"
-            last_index = index
-            last_text = texts[key]
-        return self
-
-    def assert_html_contains(self, html_fragment: str) -> Self:
-        SimpleTestCase().assertInHTML(html_fragment, self._response.content.decode())
         return self
 
 
