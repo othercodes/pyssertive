@@ -9,6 +9,7 @@ urlpatterns = [
     path("invalid-json/", views.invalid_json_view),
     # HTML endpoints
     path("html/", views.html_view),
+    path("html-sections/", views.html_sections_view),
     path("plain-text/", views.plain_text_view),
     # Status code endpoints
     path("created/", views.created_view),

@@ -24,6 +24,35 @@ def html_view(request: HttpRequest) -> HttpResponse:
     return HttpResponse(html, content_type="text/html")
 
 
+def html_sections_view(request: HttpRequest) -> HttpResponse:
+    html = """<!DOCTYPE html>
+<html>
+<head><title>Dashboard</title></head>
+<body>
+<h1>Dashboard</h1>
+<nav class="main"><ul><li>Home</li><li>Users</li><li>Settings</li></ul></nav>
+<section id="billing">
+  <h2>Billing</h2>
+  <p>Contact: <span class="email">alice@example.com</span></p>
+</section>
+<section id="audit-log">
+  <h2>Audit Log</h2>
+  <p>Reviewed by: <span class="email">bob@example.com</span></p>
+</section>
+<table id="active-users">
+  <thead><tr><th>Name</th><th>Email</th></tr></thead>
+  <tbody>
+    <tr class="row"><td>Alice</td><td>alice@example.com</td></tr>
+    <tr class="row"><td>Bob</td><td>bob@example.com</td></tr>
+    <tr class="row"><td>Carol</td><td>carol@example.com</td></tr>
+  </tbody>
+</table>
+<footer>Footer text outside the table</footer>
+</body>
+</html>"""
+    return HttpResponse(html, content_type="text/html")
+
+
 def plain_text_view(request: HttpRequest) -> HttpResponse:
     return HttpResponse("Plain text content", content_type="text/plain")
 
