@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import re
 import sys
-from typing import Any
 
 if sys.version_info >= (3, 11):  # pragma: no cover
     from typing import Self
@@ -147,105 +145,6 @@ class HeaderAssertionsMixin:
     def assert_content_type(self, expected: str) -> Self:
         actual = self._response.headers.get("Content-Type")
         assert actual == expected, f"Expected Content-Type '{expected}', got '{actual}'"
-        return self
-
-
-class JsonContentAssertionsMixin:
-    _response: HttpResponse
-
-    def _get_json(self) -> Any:
-        try:
-            return json.loads(self._response.content)
-        except json.JSONDecodeError:
-            raise AssertionError("Response content is not valid JSON") from None
-
-    def _resolve_path(self, data: Any, path: str) -> Any:
-        for part in path.split("."):
-            if isinstance(data, dict):
-                data = data.get(part)
-            elif isinstance(data, list) and part.isdigit():
-                data = data[int(part)]
-            else:
-                raise AssertionError(f"Path '{path}' not found in response JSON")
-        return data
-
-    def assert_json(self) -> Self:
-        self._get_json()
-        return self
-
-    def assert_json_path(self, path: str, expected: Any) -> Self:
-        data = self._get_json()
-        actual = self._resolve_path(data, path)
-        assert actual == expected, f"Expected '{expected}' at path '{path}', got '{actual}'"
-        return self
-
-    def assert_json_fragment(self, fragment: dict) -> Self:
-        data = self._get_json()
-        flat = json.dumps(data)
-        for key, value in fragment.items():
-            pair = f'"{key}": {json.dumps(value)}'
-            assert pair in flat, f"Fragment {key}: {value} not found in response JSON"
-        return self
-
-    def assert_json_missing_fragment(self, fragment: dict) -> Self:
-        data = self._get_json()
-        flat = json.dumps(data)
-        for key, value in fragment.items():
-            pair = f'"{key}": {json.dumps(value)}'
-            assert pair not in flat, f"Unexpected fragment {key}: {value} found in response JSON"
-        return self
-
-    def assert_json_count(self, expected: int, path: str | None = None) -> Self:
-        data = self._get_json()
-        if path:
-            data = self._resolve_path(data, path)
-        assert isinstance(data, list), f"Expected a list at path '{path}', got {type(data)}"
-        assert len(data) == expected, f"Expected {expected} items at '{path}', got {len(data)}"
-        return self
-
-    def assert_exact_json(self, expected: Any) -> Self:
-        data = self._get_json()
-        assert data == expected, f"Expected exact JSON: {expected}, got: {data}"
-        return self
-
-    def assert_json_structure(self, structure: dict) -> Self:
-        data = self._get_json()
-        assert isinstance(data, dict), f"Expected JSON object, got {type(data).__name__}"
-        for key, expected_type in structure.items():
-            assert key in data, f"Key '{key}' missing from JSON response"
-            if expected_type is not None:
-                actual_type = type(data[key])
-                assert isinstance(data[key], expected_type), (
-                    f"Key '{key}' expected type {expected_type.__name__}, got {actual_type.__name__}"
-                )
-        return self
-
-    def assert_json_missing_path(self, path: str) -> Self:
-        data = self._get_json()
-        parts = path.split(".")
-        current = data
-        for part in parts:
-            if isinstance(current, dict):
-                if part not in current:
-                    return self
-                current = current[part]
-            elif isinstance(current, list) and part.isdigit():
-                idx = int(part)
-                if idx >= len(current):
-                    return self
-                current = current[idx]
-            else:
-                return self
-        raise AssertionError(f"Path '{path}' should not exist but has value: {current}")
-
-    def assert_json_is_array(self) -> Self:
-        data = self._get_json()
-        assert isinstance(data, list), f"Expected JSON array, got {type(data).__name__}"
-        return self
-
-    def assert_json_is_object(self) -> Self:
-        data = self._get_json()
-        assert isinstance(data, dict), f"Expected JSON object, got {type(data).__name__}"
         return self
 
 
