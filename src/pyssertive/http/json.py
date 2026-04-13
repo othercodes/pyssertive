@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import json as stdjson
 import sys
+import urllib.request
 import warnings
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, overload
+
+import jsonschema
 
 if sys.version_info >= (3, 11):  # pragma: no cover
     from typing import Self
@@ -12,6 +16,23 @@ else:  # pragma: no cover
     from typing_extensions import Self
 
 from django.http import HttpResponse
+
+
+def _resolve_schema(schema: dict[str, Any] | str | Path) -> dict[str, Any]:
+    if isinstance(schema, dict):
+        return schema
+
+    raw = str(schema)
+
+    if raw.startswith(("http://", "https://")):
+        with urllib.request.urlopen(raw) as resp:
+            return stdjson.loads(resp.read())
+
+    path = Path(raw)
+    if not path.is_file():
+        raise FileNotFoundError(f"Schema file not found: {path}")
+    with path.open() as f:
+        return stdjson.load(f)
 
 
 class AssertableJson:
@@ -161,6 +182,16 @@ class AssertableJson:
                 )
         return self
 
+    def matches_schema(self, schema: dict[str, Any] | str | Path) -> Self:
+        resolved = _resolve_schema(schema)
+        try:
+            jsonschema.validate(instance=self._data, schema=resolved)
+        except jsonschema.ValidationError as exc:
+            path_str = ".".join(str(p) for p in exc.absolute_path) if exc.absolute_path else "root"
+            scope = f" at scope '{self._path}'" if self._path else ""
+            raise AssertionError(f"JSON schema validation failed{scope} at '{path_str}': {exc.message}") from None
+        return self
+
     def json(
         self,
         path: str,
@@ -253,6 +284,10 @@ class JsonContentAssertionsMixin:
 
     def assert_json_is_list(self) -> Self:
         self.assert_json().is_list()
+        return self
+
+    def assert_json_schema(self, schema: dict[str, Any] | str | Path) -> Self:
+        self.assert_json().matches_schema(schema)
         return self
 
     def assert_json_is_object(self) -> Self:
