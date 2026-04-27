@@ -56,3 +56,36 @@ def test_should_be_independent_should_return_self_for_chaining():
     result = layers.should_be_independent()
 
     assert result is layers
+
+
+def test_layers_ignoring_should_grandfather_violation_through_ignored_modules():
+    assert_arch.layers([
+        "ignoring_pkg.source",
+        "ignoring_pkg.forbidden",
+    ]).ignoring([
+        "ignoring_pkg.legacy.*",
+        "ignoring_pkg.modern.*",
+    ]).should_be_independent()
+
+
+def test_layers_ignoring_should_still_raise_when_alternate_non_ignored_path_exists():
+    with pytest.raises(AssertionError):
+        assert_arch.layers([
+            "ignoring_pkg.source",
+            "ignoring_pkg.forbidden",
+        ]).ignoring("ignoring_pkg.legacy.*").should_be_independent()
+
+
+def test_layers_ignoring_should_return_self_for_chaining():
+    layers = assert_arch.layers(["ignoring_pkg.source", "ignoring_pkg.forbidden"])
+
+    result = layers.ignoring(["foo"])
+
+    assert result is layers
+
+
+def test_layers_ignoring_should_treat_pair_as_clean_when_importer_layer_fully_ignored():
+    assert_arch.layers([
+        "ignoring_pkg.source",
+        "ignoring_pkg.forbidden",
+    ]).ignoring("ignoring_pkg.source").should_be_independent()
