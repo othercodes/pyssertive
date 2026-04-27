@@ -292,3 +292,21 @@ def test_ignoring_should_filter_violations_in_should_only_depend_on():
     assert_arch("ignoring_pkg.source").ignoring(
         ["ignoring_pkg.legacy.*", "ignoring_pkg.modern.*"]
     ).should_only_depend_on(["ignoring_pkg"])
+
+
+def test_should_only_depend_on_should_skip_modules_only_reachable_via_ignored_paths():
+    assert_arch("ignoring_pkg.source").ignoring(
+        ["ignoring_pkg.legacy.*", "ignoring_pkg.modern.*"]
+    ).should_only_depend_on(
+        ["ignoring_pkg.source", "ignoring_pkg.forbidden_direct"],
+        directly=False,
+    )
+
+
+def test_should_only_depend_on_should_still_flag_dep_reachable_without_ignored_path():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("ignoring_pkg.source").ignoring(
+            ["ignoring_pkg.legacy.*", "ignoring_pkg.modern.*"]
+        ).should_only_depend_on(["ignoring_pkg.source"], directly=False)
+
+    assert "ignoring_pkg.forbidden_direct" in str(exc_info.value)

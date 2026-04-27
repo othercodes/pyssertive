@@ -171,7 +171,7 @@ class AssertableArch:
         if directly:
             deps = graph.find_modules_directly_imported_by(self._module)
         else:
-            deps = graph.find_upstream_modules(self._module)
+            deps = self._upstream_respecting_ignoring(graph)
         stdlib_allowed = _STDLIB_TOKEN in allowed_list
         explicit = [a for a in allowed_list if a != _STDLIB_TOKEN]
         violations = sorted(
@@ -225,6 +225,22 @@ class AssertableArch:
 
     def _is_ignored(self, module: str) -> bool:
         return any(fnmatch.fnmatch(module, pattern) for pattern in self._ignored)
+
+    def _upstream_respecting_ignoring(self, graph: grimp.ImportGraph) -> set[str]:
+        if not self._ignored:
+            return set(graph.find_upstream_modules(self._module))
+        visited: set[str] = {self._module}
+        queue: deque[str] = deque([self._module])
+        upstream: set[str] = set()
+        while queue:
+            current = queue.popleft()
+            for next_mod in graph.find_modules_directly_imported_by(current):
+                if next_mod in visited or self._is_ignored(next_mod):
+                    continue
+                visited.add(next_mod)
+                upstream.add(next_mod)
+                queue.append(next_mod)
+        return upstream
 
     def _find_chain(self, graph: grimp.ImportGraph, target: str) -> tuple[str, ...] | None:
         if not self._ignored:
