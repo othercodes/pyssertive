@@ -198,3 +198,44 @@ def test_should_only_depend_on_should_not_treat_user_module_named_stdlib_as_toke
         assert_arch("user_stdlib_pkg.consumer").should_only_depend_on(["stdlib"])
 
     assert "user_stdlib_pkg.stdlib" in str(exc_info.value)
+
+
+def test_ignoring_should_pass_when_all_chain_paths_pass_through_ignored_modules():
+    assert_arch("ignoring_pkg.source").ignoring(
+        ["ignoring_pkg.legacy.via", "ignoring_pkg.modern.via"]
+    ).should_not_depend_on("ignoring_pkg.forbidden")
+
+
+def test_ignoring_should_accept_glob_pattern():
+    assert_arch("ignoring_pkg.source").ignoring(
+        ["ignoring_pkg.legacy.*", "ignoring_pkg.modern.*"]
+    ).should_not_depend_on("ignoring_pkg.forbidden")
+
+
+def test_ignoring_should_accept_single_string_pattern():
+    arch = assert_arch("ignoring_pkg.source")
+
+    result = arch.ignoring("ignoring_pkg.legacy.*")
+
+    assert result is arch
+
+
+def test_ignoring_should_still_detect_violation_via_alternate_path():
+    with pytest.raises(AssertionError):
+        assert_arch("ignoring_pkg.source").ignoring(
+            "ignoring_pkg.legacy.*"
+        ).should_not_depend_on("ignoring_pkg.forbidden")
+
+
+def test_ignoring_should_return_self_for_chaining():
+    arch = assert_arch("ignoring_pkg.source")
+
+    result = arch.ignoring(["ignoring_pkg.legacy.*"])
+
+    assert result is arch
+
+
+def test_ignoring_should_filter_violations_in_should_only_depend_on():
+    assert_arch("ignoring_pkg.source").ignoring(
+        ["ignoring_pkg.legacy.*", "ignoring_pkg.modern.*"]
+    ).should_only_depend_on(["ignoring_pkg"])

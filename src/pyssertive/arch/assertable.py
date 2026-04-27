@@ -1,4 +1,6 @@
+import fnmatch
 import sys
+from collections import deque
 
 import grimp
 
@@ -31,6 +33,12 @@ class AssertableArch:
       The literal ``"stdlib"`` is a magic token expanding to any
       Python standard library top-level module.
 
+    ``ignoring(patterns)`` accepts ``fnmatch`` glob patterns used to
+    grandfather known violations. Patterns apply to chain traversals
+    (the chain BFS skips matching modules so an alternate non-ignored
+    path is still detected) and to the violation list of
+    ``should_only_depend_on`` (matching dependencies are filtered out).
+
     Source and target modules are validated against the import graph;
     typos and unsupported external submodule paths raise ``ValueError``
     instead of producing cryptic engine errors mid-assertion.
@@ -45,6 +53,12 @@ class AssertableArch:
                 f"Source module {module!r} is not in the import graph for "
                 f"package {self._package!r}."
             )
+        self._ignored: list[str] = []
+
+    def ignoring(self, patterns: str | list[str]) -> "AssertableArch":
+        new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
+        self._ignored.extend(new_patterns)
+        return self
 
     def should_depend_on(
         self, target: str | list[str], directly: bool = False
@@ -59,7 +73,7 @@ class AssertableArch:
                 if candidate not in graph.find_modules_directly_imported_by(self._module):
                     missing.append(candidate)
             else:
-                if graph.find_shortest_chain(self._module, candidate) is None:
+                if self._find_chain(graph, candidate) is None:
                     missing.append(candidate)
         if missing:
             self._raise_violations("should depend on", missing)
@@ -78,7 +92,7 @@ class AssertableArch:
                 if candidate in graph.find_modules_directly_imported_by(self._module):
                     violations.append(f"{candidate} (direct import)")
             else:
-                chain = graph.find_shortest_chain(self._module, candidate)
+                chain = self._find_chain(graph, candidate)
                 if chain is not None:
                     violations.append(f"{candidate}: " + " → ".join(chain))
         if violations:
@@ -99,7 +113,8 @@ class AssertableArch:
         violations = sorted(
             dep
             for dep in deps
-            if not (stdlib_allowed and dep.split(".")[0] in sys.stdlib_module_names)
+            if not self._is_ignored(dep)
+            and not (stdlib_allowed and dep.split(".")[0] in sys.stdlib_module_names)
             and not any(dep == a or dep.startswith(f"{a}.") for a in explicit)
         )
         if violations:
@@ -125,3 +140,25 @@ class AssertableArch:
         raise AssertionError(
             f"{self._module} {action}:\n  - " + "\n  - ".join(items)
         )
+
+    def _is_ignored(self, module: str) -> bool:
+        return any(fnmatch.fnmatch(module, pattern) for pattern in self._ignored)
+
+    def _find_chain(self, graph: grimp.ImportGraph, target: str) -> tuple[str, ...] | None:
+        if not self._ignored:
+            return graph.find_shortest_chain(self._module, target)
+        visited = {self._module}
+        queue: deque[tuple[str, tuple[str, ...]]] = deque(
+            [(self._module, (self._module,))]
+        )
+        while queue:
+            current, path = queue.popleft()
+            for next_mod in graph.find_modules_directly_imported_by(current):
+                if next_mod in visited or self._is_ignored(next_mod):
+                    continue
+                new_path = (*path, next_mod)
+                if next_mod == target:
+                    return new_path
+                visited.add(next_mod)
+                queue.append((next_mod, new_path))
+        return None
