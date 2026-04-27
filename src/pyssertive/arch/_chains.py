@@ -17,9 +17,15 @@ def find_chain(
     ignored: list[str],
 ) -> tuple[str, ...] | None:
     if not ignored:
-        return graph.find_shortest_chain(source, target)
+        chains = graph.find_shortest_chains(
+            importer=source, imported=target, as_packages=True
+        )
+        if chains:
+            return sorted(chains)[0]
+        return None
     if is_ignored(source, ignored):
         return None
+    target_modules = {target} | graph.find_descendants(target)
     visited = {source}
     queue: deque[tuple[str, tuple[str, ...]]] = deque([(source, (source,))])
     while queue:
@@ -28,7 +34,7 @@ def find_chain(
             if next_mod in visited or is_ignored(next_mod, ignored):
                 continue
             new_path = (*path, next_mod)
-            if next_mod == target:
+            if next_mod in target_modules:
                 return new_path
             visited.add(next_mod)
             queue.append((next_mod, new_path))

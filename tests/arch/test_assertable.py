@@ -337,3 +337,12 @@ def test_should_not_depend_on_should_handle_cyclic_imports_without_infinite_loop
     assert_arch("cycle_pkg.a").ignoring("nothing_to_match").should_not_depend_on(
         "cycle_pkg.unrelated"
     )
+
+
+def test_should_not_depend_on_should_treat_package_target_as_any_descendant():
+    with pytest.raises(AssertionError):
+        assert_arch("ignoring_pkg.source").should_not_depend_on("ignoring_pkg.legacy")
+
+
+def test_should_depend_on_should_treat_package_target_as_any_descendant():
+    assert_arch("ignoring_pkg.source").should_depend_on("ignoring_pkg.legacy")
