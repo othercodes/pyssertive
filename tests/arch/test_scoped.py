@@ -67,6 +67,12 @@ def test_module_should_expand_glob_pattern_within_scope():
     )
 
 
+def test_module_should_return_chainable_multi_when_glob_pattern_without_callback():
+    assert_arch("glob_pkg").module("*.views").should_not_depend_on(
+        "glob_pkg.bc2.models"
+    )
+
+
 def test_module_should_aggregate_failures_across_glob_matches_in_callback():
     with pytest.raises(AssertionError) as exc_info:
         assert_arch("glob_pkg").module(
