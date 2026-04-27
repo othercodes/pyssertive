@@ -115,3 +115,19 @@ def test_multi_assertable_arch_module_should_resolve_nested_glob_pattern():
     assert_arch("glob_pkg.bc[12]").module(
         "*", lambda m: m.should_not_depend_on("glob_pkg.bc3.models")
     )
+
+
+def test_module_should_inherit_ignored_from_parent_scope():
+    assert_arch("ignoring_pkg").ignoring(
+        ["ignoring_pkg.legacy.*", "ignoring_pkg.modern.*"]
+    ).module(
+        "source",
+        lambda s: s.should_not_depend_on("ignoring_pkg.forbidden"),
+    )
+
+
+def test_multi_assertable_arch_module_should_inherit_ignored_from_parent_scope():
+    assert_arch("glob_pkg.bc[123]").ignoring("*.views").module(
+        "models",
+        lambda m: m.should_not_depend_on("glob_pkg.*.views"),
+    )

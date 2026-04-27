@@ -89,8 +89,11 @@ class AssertableArch:
         nested: AssertableArch | _MultiAssertableArch
         if _is_glob_pattern(resolved):
             nested = _MultiAssertableArch(_expand_glob_source(resolved))
+            for member in nested._members:
+                member._ignored = list(self._ignored)
         else:
             nested = AssertableArch(resolved)
+            nested._ignored = list(self._ignored)
         if callback is not None:
             callback(nested)
             return self
