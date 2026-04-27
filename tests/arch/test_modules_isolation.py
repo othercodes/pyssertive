@@ -67,3 +67,10 @@ def test_should_be_isolated_should_return_self_for_chaining():
     result = modules.should_be_isolated()
 
     assert result is modules
+
+
+def test_modules_should_invoke_callback_with_modules_instance():
+    assert_arch.modules(
+        ["bcs_pkg.bc1", "bcs_pkg.bc5"],
+        lambda modules: modules.should_be_isolated(),
+    )

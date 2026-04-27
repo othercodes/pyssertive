@@ -41,13 +41,27 @@ class _AssertArch:
             callback(arch)
         return arch
 
-    def layers(self, layers: list[str]) -> AssertableLayers:
-        """Return an :class:`AssertableLayers` over the ordered layer list."""
-        return AssertableLayers(layers)
+    def layers(
+        self,
+        layers: list[str],
+        callback: Callable[[AssertableLayers], object] | None = None,
+    ) -> AssertableLayers:
+        """Return an :class:`AssertableLayers` over the ordered layer list, invoking ``callback`` if given."""
+        instance = AssertableLayers(layers)
+        if callback is not None:
+            callback(instance)
+        return instance
 
-    def modules(self, modules: list[str]) -> AssertableModules:
-        """Return an :class:`AssertableModules` over the unordered module set."""
-        return AssertableModules(modules)
+    def modules(
+        self,
+        modules: list[str],
+        callback: Callable[[AssertableModules], object] | None = None,
+    ) -> AssertableModules:
+        """Return an :class:`AssertableModules` over the unordered module set, invoking ``callback`` if given."""
+        instance = AssertableModules(modules)
+        if callback is not None:
+            callback(instance)
+        return instance
 
 
 assert_arch = _AssertArch()

@@ -89,3 +89,14 @@ def test_layers_ignoring_should_treat_pair_as_clean_when_importer_layer_fully_ig
         "ignoring_pkg.source",
         "ignoring_pkg.forbidden",
     ]).ignoring("ignoring_pkg.source").should_be_independent()
+
+
+def test_layers_should_invoke_callback_with_layers_instance():
+    assert_arch.layers(
+        [
+            "clean_pkg.domain",
+            "clean_pkg.application",
+            "clean_pkg.infrastructure",
+        ],
+        lambda layers: layers.should_be_independent(),
+    )
