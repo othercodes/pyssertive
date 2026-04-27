@@ -304,6 +304,26 @@ class _MultiAssertableArch:
     ) -> "_MultiAssertableArch":
         return self._dispatch_assertion("should_only_depend_on", allowed, directly=directly)
 
+    def module(
+        self,
+        name: str,
+        callback: Callable[["AssertableArch | _MultiAssertableArch"], object] | None = None,
+    ) -> "AssertableArch | _MultiAssertableArch":
+        """Descend each member into ``name``, returning a flattened multi or invoking the callback."""
+        nested_members: list[AssertableArch] = []
+        for member in self._members:
+            nested = member.module(name)
+            if isinstance(nested, _MultiAssertableArch):
+                nested_members.extend(nested._members)
+            else:
+                nested_members.append(nested)
+        nested_multi = _MultiAssertableArch.__new__(_MultiAssertableArch)
+        nested_multi._members = nested_members
+        if callback is not None:
+            callback(nested_multi)
+            return self
+        return nested_multi
+
     def _dispatch_assertion(self, method_name: str, *args: object, **kwargs: object) -> "_MultiAssertableArch":
         errors: list[str] = []
         for member in self._members:

@@ -80,3 +80,27 @@ def test_module_should_support_recursive_nesting():
             "views", lambda v: v.should_only_depend_on("glob_pkg")
         ),
     )
+
+
+def test_multi_assertable_arch_module_should_descend_into_each_glob_source():
+    assert_arch("glob_pkg.bc[123]").module("models").should_not_depend_on(
+        "glob_pkg.bc1.views"
+    )
+
+
+def test_multi_assertable_arch_module_should_aggregate_errors_from_callback():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("glob_pkg.bc[123]").module(
+            "models",
+            lambda m: m.should_not_depend_on("glob_pkg.*.views"),
+        )
+
+    message = str(exc_info.value)
+    assert "glob_pkg.bc2.models" in message
+    assert "glob_pkg.bc3.models" in message
+
+
+def test_multi_assertable_arch_module_should_resolve_nested_glob_pattern():
+    assert_arch("glob_pkg.bc[12]").module(
+        "*", lambda m: m.should_not_depend_on("glob_pkg.bc3.models")
+    )
