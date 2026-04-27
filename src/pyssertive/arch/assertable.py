@@ -331,6 +331,10 @@ class _MultiAssertableArch:
         return nested_multi
 
     def _dispatch_assertion(self, method_name: str, *args: object, **kwargs: object) -> "_MultiAssertableArch":
+        # Relies on AssertableArch._raise_violations prefixing each error with
+        # the failing source module — concatenating str(exc) yields a self-
+        # describing aggregated message. Changing that prefix elsewhere will
+        # require labelling here.
         errors: list[str] = []
         for member in self._members:
             try:

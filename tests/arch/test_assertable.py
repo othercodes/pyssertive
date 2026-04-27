@@ -216,6 +216,15 @@ def test_assert_arch_should_aggregate_assertion_errors_per_glob_match():
     assert "glob_pkg.bc3.models" in message
 
 
+def test_multi_assertable_dispatcher_should_label_each_failing_source_in_aggregated_message():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("glob_pkg.*.models").should_not_depend_on("glob_pkg.*.views")
+
+    message = str(exc_info.value)
+    assert "glob_pkg.bc2.models should not depend on" in message
+    assert "glob_pkg.bc3.models should not depend on" in message
+
+
 def test_assert_arch_should_raise_when_source_glob_matches_no_modules():
     with pytest.raises(ValueError, match="did not match any module"):
         assert_arch("glob_pkg.*.nonexistent_xyz")
