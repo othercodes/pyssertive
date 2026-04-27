@@ -331,3 +331,9 @@ def test_should_only_depend_on_should_pass_when_source_module_is_ignored():
     assert_arch("ignoring_pkg.legacy.via").ignoring(
         "ignoring_pkg.legacy.*"
     ).should_only_depend_on(["nothing"], directly=False)
+
+
+def test_should_not_depend_on_should_handle_cyclic_imports_without_infinite_loop():
+    assert_arch("cycle_pkg.a").ignoring("nothing_to_match").should_not_depend_on(
+        "cycle_pkg.unrelated"
+    )
