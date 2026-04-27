@@ -8,8 +8,13 @@ import grimp
 from pyssertive.arch.graph import build_graph
 
 _STDLIB_TOKEN = "stdlib"
+_GLOB_CHARS = "*?["
 
 __all__ = ["AssertableArch"]
+
+
+def _is_glob_pattern(s: str) -> bool:
+    return any(c in s for c in _GLOB_CHARS)
 
 
 class AssertableArch:
@@ -74,6 +79,7 @@ class AssertableArch:
         """
         targets = [target] if isinstance(target, str) else list(target)
         graph = build_graph(self._package)
+        targets = self._expand_targets(targets, graph)
         for candidate in targets:
             self._validate_target(candidate, graph)
         missing: list[str] = []
@@ -101,6 +107,7 @@ class AssertableArch:
         """
         targets = [target] if isinstance(target, str) else list(target)
         graph = build_graph(self._package)
+        targets = self._expand_targets(targets, graph)
         for candidate in targets:
             self._validate_target(candidate, graph)
         violations: list[str] = []
@@ -148,6 +155,21 @@ class AssertableArch:
                 violations,
             )
         return self
+
+    def _expand_targets(self, targets: list[str], graph: grimp.ImportGraph) -> list[str]:
+        expanded: list[str] = []
+        for t in targets:
+            if _is_glob_pattern(t):
+                matches = sorted(m for m in graph.modules if fnmatch.fnmatch(m, t))
+                if not matches:
+                    raise ValueError(
+                        f"Pattern {t!r} did not match any module in the import graph "
+                        f"for package {self._package!r}."
+                    )
+                expanded.extend(matches)
+            else:
+                expanded.append(t)
+        return expanded
 
     def _validate_target(self, target: str, graph: grimp.ImportGraph) -> None:
         if target in graph.modules:
@@ -197,3 +219,61 @@ def _did_you_mean(name: str, graph: grimp.ImportGraph) -> str:
     if matches:
         return f" Did you mean {matches[0]!r}?"
     return ""
+
+
+class _MultiAssertableArch:
+    """
+    Wraps several :class:`AssertableArch` instances obtained by glob-expanding
+    a source pattern. Each public method dispatches to every member and
+    aggregates any AssertionErrors into a single message so callers see every
+    failing source at once.
+    """
+
+    def __init__(self, sources: list[str]) -> None:
+        self._members = [AssertableArch(s) for s in sources]
+
+    def ignoring(self, patterns: str | list[str]) -> "_MultiAssertableArch":
+        for member in self._members:
+            member.ignoring(patterns)
+        return self
+
+    def should_depend_on(
+        self, target: str | list[str], directly: bool = False
+    ) -> "_MultiAssertableArch":
+        return self._dispatch_assertion("should_depend_on", target, directly=directly)
+
+    def should_not_depend_on(
+        self, target: str | list[str], directly: bool = False
+    ) -> "_MultiAssertableArch":
+        return self._dispatch_assertion("should_not_depend_on", target, directly=directly)
+
+    def should_only_depend_on(
+        self, allowed: str | list[str], directly: bool = True
+    ) -> "_MultiAssertableArch":
+        return self._dispatch_assertion("should_only_depend_on", allowed, directly=directly)
+
+    def _dispatch_assertion(self, method_name: str, *args: object, **kwargs: object) -> "_MultiAssertableArch":
+        errors: list[str] = []
+        for member in self._members:
+            try:
+                getattr(member, method_name)(*args, **kwargs)
+            except AssertionError as exc:
+                errors.append(str(exc))
+        if errors:
+            raise AssertionError("\n\n".join(errors))
+        return self
+
+
+def _expand_glob_source(pattern: str) -> list[str]:
+    top = pattern.split(".")[0]
+    if _is_glob_pattern(top):
+        raise ValueError(
+            f"Glob pattern {pattern!r} must have a fixed top-level package name."
+        )
+    graph = build_graph(top)
+    matches = sorted(m for m in graph.modules if fnmatch.fnmatch(m, pattern))
+    if not matches:
+        raise ValueError(
+            f"Pattern {pattern!r} did not match any module in package {top!r}."
+        )
+    return matches

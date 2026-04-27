@@ -203,6 +203,49 @@ def test_should_not_depend_on_should_suggest_close_match_when_target_typo():
         assert_arch("clean_pkg.domain").should_not_depend_on("clean_pkg.applicaton")
 
 
+def test_assert_arch_should_expand_glob_pattern_and_apply_should_not_depend_on_to_each_match():
+    assert_arch("glob_pkg.*.views").should_not_depend_on("glob_pkg.bc2.models")
+
+
+def test_assert_arch_should_aggregate_assertion_errors_per_glob_match():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("glob_pkg.*.models").should_not_depend_on("glob_pkg.*.views")
+
+    message = str(exc_info.value)
+    assert "glob_pkg.bc2.models" in message
+    assert "glob_pkg.bc3.models" in message
+
+
+def test_assert_arch_should_raise_when_source_glob_matches_no_modules():
+    with pytest.raises(ValueError, match="did not match any module"):
+        assert_arch("glob_pkg.*.nonexistent_xyz")
+
+
+def test_assert_arch_should_raise_when_source_glob_top_level_is_a_pattern():
+    with pytest.raises(ValueError, match="fixed top-level"):
+        assert_arch("*.models")
+
+
+def test_should_not_depend_on_should_expand_glob_target():
+    with pytest.raises(AssertionError):
+        assert_arch("glob_pkg.bc2.models").should_not_depend_on("glob_pkg.*.views")
+
+
+def test_should_not_depend_on_should_raise_when_target_glob_matches_no_modules():
+    with pytest.raises(ValueError, match="did not match any module"):
+        assert_arch("glob_pkg.bc1.models").should_not_depend_on("glob_pkg.*.nonexistent_xyz")
+
+
+def test_assert_arch_glob_should_expose_should_depend_on():
+    assert_arch("glob_pkg.bc[1].views").should_depend_on("glob_pkg.bc1.models")
+
+
+def test_assert_arch_glob_should_expose_should_only_depend_on_with_ignoring():
+    assert_arch("glob_pkg.*.views")\
+        .ignoring(["glob_pkg.bc1.unused"])\
+        .should_only_depend_on(["glob_pkg"])
+
+
 def test_should_only_depend_on_should_not_treat_user_module_named_stdlib_as_token():
     with pytest.raises(AssertionError) as exc_info:
         assert_arch("user_stdlib_pkg.consumer").should_only_depend_on(["stdlib"])
