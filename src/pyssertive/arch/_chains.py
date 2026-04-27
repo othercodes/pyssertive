@@ -17,9 +17,7 @@ def find_chain(
     ignored: list[str],
 ) -> tuple[str, ...] | None:
     if not ignored:
-        chains = graph.find_shortest_chains(
-            importer=source, imported=target, as_packages=True
-        )
+        chains = graph.find_shortest_chains(importer=source, imported=target, as_packages=True)
         if chains:
             return sorted(chains)[0]
         return None
@@ -71,9 +69,7 @@ def find_package_chain(
     ignored: list[str],
 ) -> tuple[str, ...] | None:
     if not ignored:
-        chains = graph.find_shortest_chains(
-            importer=importer, imported=imported, as_packages=True
-        )
+        chains = graph.find_shortest_chains(importer=importer, imported=imported, as_packages=True)
         if chains:
             return sorted(chains)[0]
         return None
@@ -83,9 +79,7 @@ def find_package_chain(
     if not sources:
         return None
     visited: set[str] = set(sources)
-    queue: deque[tuple[str, tuple[str, ...]]] = deque(
-        (s, (s,)) for s in sources
-    )
+    queue: deque[tuple[str, tuple[str, ...]]] = deque((s, (s,)) for s in sources)
     while queue:
         current, path = queue.popleft()
         for next_mod in graph.find_modules_directly_imported_by(current):

@@ -43,22 +43,16 @@ def test_should_be_isolated_should_show_violating_pair_with_import_chain_in_erro
 
 
 def test_should_be_isolated_should_pass_when_violations_are_only_through_ignored_paths():
-    assert_arch.modules(["bcs_pkg.bc1", "bcs_pkg.bc4"]).ignoring(
-        ["*.events"]
-    ).should_be_isolated()
+    assert_arch.modules(["bcs_pkg.bc1", "bcs_pkg.bc4"]).ignoring(["*.events"]).should_be_isolated()
 
 
 def test_should_be_isolated_should_still_detect_alternate_non_ignored_chain():
     with pytest.raises(AssertionError):
-        assert_arch.modules(["bcs_pkg.bc1", "bcs_pkg.bc6"]).ignoring(
-            ["*.events"]
-        ).should_be_isolated()
+        assert_arch.modules(["bcs_pkg.bc1", "bcs_pkg.bc6"]).ignoring(["*.events"]).should_be_isolated()
 
 
 def test_should_be_isolated_should_treat_pair_as_isolated_when_importer_fully_ignored():
-    assert_arch.modules(["bcs_pkg.bc1", "bcs_pkg.bc4"]).ignoring(
-        ["bcs_pkg.bc4", "bcs_pkg.bc4.*"]
-    ).should_be_isolated()
+    assert_arch.modules(["bcs_pkg.bc1", "bcs_pkg.bc4"]).ignoring(["bcs_pkg.bc4", "bcs_pkg.bc4.*"]).should_be_isolated()
 
 
 def test_should_be_isolated_should_return_self_for_chaining():

@@ -116,9 +116,7 @@ class AssertableArch:
             )
         return f"{self._module}.{name}"
 
-    def should_depend_on(
-        self, target: str | list[str], directly: bool = False
-    ) -> "AssertableArch":
+    def should_depend_on(self, target: str | list[str], directly: bool = False) -> "AssertableArch":
         """
         Assert the source imports each ``target`` directly or transitively.
 
@@ -131,9 +129,7 @@ class AssertableArch:
         targets = self._expand_targets(targets, graph)
         for candidate in targets:
             self._validate_target(candidate, graph)
-        direct_deps = (
-            graph.find_modules_directly_imported_by(self._module) if directly else None
-        )
+        direct_deps = graph.find_modules_directly_imported_by(self._module) if directly else None
         missing: list[str] = []
         for candidate in targets:
             if direct_deps is not None:
@@ -146,9 +142,7 @@ class AssertableArch:
             self._raise_violations("should depend on", missing)
         return self
 
-    def should_not_depend_on(
-        self, target: str | list[str], directly: bool = False
-    ) -> "AssertableArch":
+    def should_not_depend_on(self, target: str | list[str], directly: bool = False) -> "AssertableArch":
         """
         Assert the source does not import any ``target``, direct or transitive.
 
@@ -162,9 +156,7 @@ class AssertableArch:
         targets = self._expand_targets(targets, graph)
         for candidate in targets:
             self._validate_target(candidate, graph)
-        direct_deps = (
-            graph.find_modules_directly_imported_by(self._module) if directly else None
-        )
+        direct_deps = graph.find_modules_directly_imported_by(self._module) if directly else None
         violations: list[str] = []
         for candidate in targets:
             if direct_deps is not None:
@@ -178,9 +170,7 @@ class AssertableArch:
             self._raise_violations("should not depend on", violations)
         return self
 
-    def should_only_depend_on(
-        self, allowed: str | list[str], directly: bool = True
-    ) -> "AssertableArch":
+    def should_only_depend_on(self, allowed: str | list[str], directly: bool = True) -> "AssertableArch":
         """
         Assert every dependency of the source matches an entry in ``allowed``.
 
@@ -218,8 +208,7 @@ class AssertableArch:
                 matches = sorted(m for m in graph.modules if fnmatch.fnmatch(m, t))
                 if not matches:
                     raise ValueError(
-                        f"Pattern {t!r} did not match any module in the import graph "
-                        f"for package {self._package!r}."
+                        f"Pattern {t!r} did not match any module in the import graph for package {self._package!r}."
                     )
                 expanded.extend(matches)
             else:
@@ -237,14 +226,11 @@ class AssertableArch:
                 f"{top!r} instead."
             )
         raise ValueError(
-            f"Target {target!r} is not in the import graph for "
-            f"package {self._package!r}.{_did_you_mean(target, graph)}"
+            f"Target {target!r} is not in the import graph for package {self._package!r}.{_did_you_mean(target, graph)}"
         )
 
     def _raise_violations(self, action: str, items: list[str]) -> None:
-        raise AssertionError(
-            f"{self._module} {action}:\n  - " + "\n  - ".join(items)
-        )
+        raise AssertionError(f"{self._module} {action}:\n  - " + "\n  - ".join(items))
 
 
 def _did_you_mean(name: str, graph: grimp.ImportGraph) -> str:
@@ -270,19 +256,13 @@ class _MultiAssertableArch:
             member.ignoring(patterns)
         return self
 
-    def should_depend_on(
-        self, target: str | list[str], directly: bool = False
-    ) -> "_MultiAssertableArch":
+    def should_depend_on(self, target: str | list[str], directly: bool = False) -> "_MultiAssertableArch":
         return self._dispatch_assertion("should_depend_on", target, directly=directly)
 
-    def should_not_depend_on(
-        self, target: str | list[str], directly: bool = False
-    ) -> "_MultiAssertableArch":
+    def should_not_depend_on(self, target: str | list[str], directly: bool = False) -> "_MultiAssertableArch":
         return self._dispatch_assertion("should_not_depend_on", target, directly=directly)
 
-    def should_only_depend_on(
-        self, allowed: str | list[str], directly: bool = True
-    ) -> "_MultiAssertableArch":
+    def should_only_depend_on(self, allowed: str | list[str], directly: bool = True) -> "_MultiAssertableArch":
         return self._dispatch_assertion("should_only_depend_on", allowed, directly=directly)
 
     def module(
@@ -324,13 +304,9 @@ class _MultiAssertableArch:
 def _expand_glob_source(pattern: str) -> list[str]:
     top = pattern.split(".")[0]
     if _is_glob_pattern(top):
-        raise ValueError(
-            f"Glob pattern {pattern!r} must have a fixed top-level package name."
-        )
+        raise ValueError(f"Glob pattern {pattern!r} must have a fixed top-level package name.")
     graph = build_graph(top)
     matches = sorted(m for m in graph.modules if fnmatch.fnmatch(m, pattern))
     if not matches:
-        raise ValueError(
-            f"Pattern {pattern!r} did not match any module in package {top!r}."
-        )
+        raise ValueError(f"Pattern {pattern!r} did not match any module in package {top!r}.")
     return matches

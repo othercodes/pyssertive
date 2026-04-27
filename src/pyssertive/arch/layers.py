@@ -22,18 +22,13 @@ class AssertableLayers:
 
     def __init__(self, layers: list[str]) -> None:
         if len(layers) < 2:
-            raise ValueError(
-                "assert_arch.layers requires at least two layers."
-            )
+            raise ValueError("assert_arch.layers requires at least two layers.")
         self._layers = list(layers)
         self._package = layers[0].split(".")[0]
         graph = build_graph(self._package)
         for layer in self._layers:
             if layer not in graph.modules:
-                raise ValueError(
-                    f"Layer {layer!r} is not in the import graph for "
-                    f"package {self._package!r}."
-                )
+                raise ValueError(f"Layer {layer!r} is not in the import graph for package {self._package!r}.")
         self._ignored: list[str] = []
 
     def ignoring(self, patterns: str | list[str]) -> "AssertableLayers":
@@ -51,12 +46,10 @@ class AssertableLayers:
         graph = build_graph(self._package)
         violations: list[str] = []
         for i, lower in enumerate(self._layers):
-            for higher in self._layers[i + 1:]:
+            for higher in self._layers[i + 1 :]:
                 chain = find_package_chain(graph, lower, higher, self._ignored)
                 if chain is not None:
-                    violations.append(
-                        f"{lower} → {higher}: " + " → ".join(chain)
-                    )
+                    violations.append(f"{lower} → {higher}: " + " → ".join(chain))
         if violations:
             raise AssertionError(
                 "Layered architecture violations (each layer must depend "

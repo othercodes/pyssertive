@@ -17,18 +17,13 @@ class AssertableModules:
 
     def __init__(self, modules: list[str]) -> None:
         if len(modules) < 2:
-            raise ValueError(
-                "assert_arch.modules requires at least two modules."
-            )
+            raise ValueError("assert_arch.modules requires at least two modules.")
         self._modules = list(modules)
         self._package = modules[0].split(".")[0]
         graph = build_graph(self._package)
         for module in self._modules:
             if module not in graph.modules:
-                raise ValueError(
-                    f"Module {module!r} is not in the import graph for "
-                    f"package {self._package!r}."
-                )
+                raise ValueError(f"Module {module!r} is not in the import graph for package {self._package!r}.")
         self._ignored: list[str] = []
 
     def ignoring(self, patterns: str | list[str]) -> "AssertableModules":
@@ -53,7 +48,5 @@ class AssertableModules:
                 if chain is not None:
                     violations.append(f"{src} → {dst}: " + " → ".join(chain))
         if violations:
-            raise AssertionError(
-                "Modules are not isolated:\n  - " + "\n  - ".join(violations)
-            )
+            raise AssertionError("Modules are not isolated:\n  - " + "\n  - ".join(violations))
         return self

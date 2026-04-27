@@ -2,9 +2,9 @@ from collections.abc import Callable
 
 from pyssertive.arch.assertable import (
     AssertableArch,
-    _MultiAssertableArch,
     _expand_glob_source,
     _is_glob_pattern,
+    _MultiAssertableArch,
 )
 from pyssertive.arch.layers import AssertableLayers
 from pyssertive.arch.modules import AssertableModules
@@ -32,11 +32,9 @@ class _AssertArch:
         invoked with the assertable so callers can scope a block of
         assertions Pest-style.
         """
-        arch: AssertableArch | _MultiAssertableArch
-        if _is_glob_pattern(module):
-            arch = _MultiAssertableArch(_expand_glob_source(module))
-        else:
-            arch = AssertableArch(module)
+        arch: AssertableArch | _MultiAssertableArch = (
+            _MultiAssertableArch(_expand_glob_source(module)) if _is_glob_pattern(module) else AssertableArch(module)
+        )
         if callback is not None:
             callback(arch)
         return arch

@@ -46,16 +46,12 @@ def test_should_not_depend_on_should_raise_when_directly_true_and_module_directl
 
 
 def test_should_not_depend_on_should_accept_list_of_targets():
-    assert_arch("clean_pkg.domain").should_not_depend_on(
-        ["clean_pkg.application", "clean_pkg.infrastructure"]
-    )
+    assert_arch("clean_pkg.domain").should_not_depend_on(["clean_pkg.application", "clean_pkg.infrastructure"])
 
 
 def test_should_not_depend_on_should_aggregate_violations_across_list_in_error_message():
     with pytest.raises(AssertionError) as exc_info:
-        assert_arch("transitive_pkg.a").should_not_depend_on(
-            ["transitive_pkg.b", "transitive_pkg.c"]
-        )
+        assert_arch("transitive_pkg.a").should_not_depend_on(["transitive_pkg.b", "transitive_pkg.c"])
 
     message = str(exc_info.value)
     assert "transitive_pkg.b" in message
@@ -93,16 +89,12 @@ def test_should_depend_on_should_return_self_for_chaining():
 
 
 def test_should_depend_on_should_accept_list_of_targets():
-    assert_arch("clean_pkg.infrastructure").should_depend_on(
-        ["clean_pkg.domain", "clean_pkg.application"]
-    )
+    assert_arch("clean_pkg.infrastructure").should_depend_on(["clean_pkg.domain", "clean_pkg.application"])
 
 
 def test_should_depend_on_should_raise_listing_all_missing_targets_when_list_partially_satisfied():
     with pytest.raises(AssertionError) as exc_info:
-        assert_arch("transitive_pkg.a").should_depend_on(
-            ["transitive_pkg.b", "transitive_pkg.d"]
-        )
+        assert_arch("transitive_pkg.a").should_depend_on(["transitive_pkg.b", "transitive_pkg.d"])
 
     message = str(exc_info.value)
     assert "transitive_pkg.d" in message
@@ -155,16 +147,12 @@ def test_should_only_depend_on_should_accept_single_string():
 
 
 def test_should_only_depend_on_should_check_transitively_when_directly_false():
-    assert_arch("clean_pkg.application").should_only_depend_on(
-        ["stdlib", "clean_pkg.domain"], directly=False
-    )
+    assert_arch("clean_pkg.application").should_only_depend_on(["stdlib", "clean_pkg.domain"], directly=False)
 
 
 def test_should_only_depend_on_should_raise_with_transitive_violation_when_directly_false():
     with pytest.raises(AssertionError) as exc_info:
-        assert_arch("clean_pkg.application").should_only_depend_on(
-            ["clean_pkg.domain"], directly=False
-        )
+        assert_arch("clean_pkg.application").should_only_depend_on(["clean_pkg.domain"], directly=False)
 
     assert "dataclasses" in str(exc_info.value)
 
@@ -194,12 +182,12 @@ def test_should_not_depend_on_should_hint_top_level_when_external_submodule_targ
 
 
 def test_assert_arch_should_suggest_close_match_when_source_typo():
-    with pytest.raises(ValueError, match="Did you mean 'clean_pkg.domain'"):
+    with pytest.raises(ValueError, match=r"Did you mean 'clean_pkg\.domain'"):
         assert_arch("clean_pkg.domian")
 
 
 def test_should_not_depend_on_should_suggest_close_match_when_target_typo():
-    with pytest.raises(ValueError, match="Did you mean 'clean_pkg.application'"):
+    with pytest.raises(ValueError, match=r"Did you mean 'clean_pkg\.application'"):
         assert_arch("clean_pkg.domain").should_not_depend_on("clean_pkg.applicaton")
 
 
@@ -254,9 +242,7 @@ def test_assert_arch_glob_should_expose_should_depend_on():
 
 
 def test_assert_arch_glob_should_expose_should_only_depend_on_with_ignoring():
-    assert_arch("glob_pkg.*.views")\
-        .ignoring(["glob_pkg.bc1.unused"])\
-        .should_only_depend_on(["glob_pkg"])
+    assert_arch("glob_pkg.*.views").ignoring(["glob_pkg.bc1.unused"]).should_only_depend_on(["glob_pkg"])
 
 
 def test_should_only_depend_on_should_not_treat_user_module_named_stdlib_as_token():
@@ -288,9 +274,9 @@ def test_ignoring_should_accept_single_string_pattern():
 
 def test_ignoring_should_still_detect_violation_via_alternate_path():
     with pytest.raises(AssertionError):
-        assert_arch("ignoring_pkg.source").ignoring(
-            "ignoring_pkg.legacy.*"
-        ).should_not_depend_on("ignoring_pkg.forbidden")
+        assert_arch("ignoring_pkg.source").ignoring("ignoring_pkg.legacy.*").should_not_depend_on(
+            "ignoring_pkg.forbidden"
+        )
 
 
 def test_ignoring_should_return_self_for_chaining():
@@ -326,21 +312,19 @@ def test_should_only_depend_on_should_still_flag_dep_reachable_without_ignored_p
 
 
 def test_should_not_depend_on_should_pass_when_source_module_is_ignored():
-    assert_arch("ignoring_pkg.legacy.via").ignoring(
-        "ignoring_pkg.legacy.*"
-    ).should_not_depend_on("ignoring_pkg.forbidden")
+    assert_arch("ignoring_pkg.legacy.via").ignoring("ignoring_pkg.legacy.*").should_not_depend_on(
+        "ignoring_pkg.forbidden"
+    )
 
 
 def test_should_only_depend_on_should_pass_when_source_module_is_ignored():
-    assert_arch("ignoring_pkg.legacy.via").ignoring(
-        "ignoring_pkg.legacy.*"
-    ).should_only_depend_on(["nothing"], directly=False)
+    assert_arch("ignoring_pkg.legacy.via").ignoring("ignoring_pkg.legacy.*").should_only_depend_on(
+        ["nothing"], directly=False
+    )
 
 
 def test_should_not_depend_on_should_handle_cyclic_imports_without_infinite_loop():
-    assert_arch("cycle_pkg.a").ignoring("nothing_to_match").should_not_depend_on(
-        "cycle_pkg.unrelated"
-    )
+    assert_arch("cycle_pkg.a").ignoring("nothing_to_match").should_not_depend_on("cycle_pkg.unrelated")
 
 
 def test_should_not_depend_on_should_treat_package_target_as_any_descendant():
@@ -354,6 +338,4 @@ def test_should_depend_on_should_treat_package_target_as_any_descendant():
 
 def test_should_not_depend_on_with_ignoring_should_treat_package_target_as_any_descendant():
     with pytest.raises(AssertionError):
-        assert_arch("ignoring_pkg.source").ignoring(
-            "ignoring_pkg.modern.*"
-        ).should_not_depend_on("ignoring_pkg.legacy")
+        assert_arch("ignoring_pkg.source").ignoring("ignoring_pkg.modern.*").should_not_depend_on("ignoring_pkg.legacy")
