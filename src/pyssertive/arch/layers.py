@@ -1,8 +1,4 @@
-import fnmatch
-from collections import deque
-
-import grimp
-
+from pyssertive.arch._chains import find_package_chain
 from pyssertive.arch.graph import build_graph
 
 __all__ = ["AssertableLayers"]
@@ -52,7 +48,7 @@ class AssertableLayers:
         violations: list[str] = []
         for i, lower in enumerate(self._layers):
             for higher in self._layers[i + 1:]:
-                chain = self._find_chain_between(graph, lower, higher)
+                chain = find_package_chain(graph, lower, higher, self._ignored)
                 if chain is not None:
                     violations.append(
                         f"{lower} → {higher}: " + " → ".join(chain)
@@ -63,37 +59,3 @@ class AssertableLayers:
                 "only on prior layers):\n  - " + "\n  - ".join(violations)
             )
         return self
-
-    def _is_ignored(self, module: str) -> bool:
-        return any(fnmatch.fnmatch(module, pattern) for pattern in self._ignored)
-
-    def _find_chain_between(
-        self, graph: grimp.ImportGraph, importer: str, imported: str
-    ) -> tuple[str, ...] | None:
-        if not self._ignored:
-            chains = graph.find_shortest_chains(
-                importer=importer, imported=imported, as_packages=True
-            )
-            if chains:
-                return sorted(chains)[0]
-            return None
-        importer_modules = {importer} | graph.find_descendants(importer)
-        imported_modules = {imported} | graph.find_descendants(imported)
-        sources = [m for m in importer_modules if not self._is_ignored(m)]
-        if not sources:
-            return None
-        visited: set[str] = set(sources)
-        queue: deque[tuple[str, tuple[str, ...]]] = deque(
-            (s, (s,)) for s in sources
-        )
-        while queue:
-            current, path = queue.popleft()
-            for next_mod in graph.find_modules_directly_imported_by(current):
-                if next_mod in visited or self._is_ignored(next_mod):
-                    continue
-                new_path = (*path, next_mod)
-                if next_mod in imported_modules:
-                    return new_path
-                visited.add(next_mod)
-                queue.append((next_mod, new_path))
-        return None
