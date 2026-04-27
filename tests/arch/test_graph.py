@@ -31,3 +31,13 @@ def test_build_graph_should_build_separate_graph_per_package():
 def test_build_graph_should_raise_when_package_is_not_importable():
     with pytest.raises(ModuleNotFoundError):
         build_graph("definitely_not_a_real_package_xyz")
+
+
+def test_build_graph_should_propagate_unrecognised_value_errors_from_grimp(monkeypatch):
+    def fake_build(*args, **kwargs):
+        raise ValueError("something unexpected")
+
+    monkeypatch.setattr("pyssertive.arch.graph.grimp.build_graph", fake_build)
+
+    with pytest.raises(ValueError, match="something unexpected"):
+        build_graph("__unique_pkg_for_l2_test__")
