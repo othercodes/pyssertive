@@ -65,7 +65,14 @@ class AssertableArch:
         self._ignored: list[str] = []
 
     def ignoring(self, patterns: str | list[str]) -> "AssertableArch":
-        """Add ``fnmatch`` glob patterns excluded from chain checks and dependency lists."""
+        """
+        Add ``fnmatch`` glob patterns excluded from chain checks and dependency lists.
+
+        Patterns accumulate across successive calls on the same assertable.
+        Each ``assert_arch(...)`` invocation starts with an empty ignore list,
+        so scoping is per-assertion-chain — there is no shared state between
+        tests. Use a fresh ``assert_arch(...)`` to start over.
+        """
         new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
         self._ignored.extend(new_patterns)
         return self

@@ -32,7 +32,11 @@ class AssertableModules:
         self._ignored: list[str] = []
 
     def ignoring(self, patterns: str | list[str]) -> "AssertableModules":
-        """Add fnmatch glob patterns excluded from cross-import detection."""
+        """
+        Add fnmatch glob patterns excluded from cross-import detection.
+
+        Patterns accumulate; the list is per-instance, not global.
+        """
         new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
         self._ignored.extend(new_patterns)
         return self

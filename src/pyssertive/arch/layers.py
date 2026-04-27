@@ -37,7 +37,11 @@ class AssertableLayers:
         self._ignored: list[str] = []
 
     def ignoring(self, patterns: str | list[str]) -> "AssertableLayers":
-        """Add fnmatch glob patterns excluded from chain traversal."""
+        """
+        Add fnmatch glob patterns excluded from chain traversal.
+
+        Patterns accumulate; the list is per-instance, not global.
+        """
         new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
         self._ignored.extend(new_patterns)
         return self
