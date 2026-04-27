@@ -19,7 +19,7 @@ def find_chain(
     if not ignored:
         chains = graph.find_shortest_chains(importer=source, imported=target, as_packages=True)
         if chains:
-            return sorted(chains)[0]
+            return min(chains)
         return None
     if is_ignored(source, ignored):
         return None
@@ -71,7 +71,7 @@ def find_package_chain(
     if not ignored:
         chains = graph.find_shortest_chains(importer=importer, imported=imported, as_packages=True)
         if chains:
-            return sorted(chains)[0]
+            return min(chains)
         return None
     importer_modules = {importer} | graph.find_descendants(importer)
     imported_modules = {imported} | graph.find_descendants(imported)
