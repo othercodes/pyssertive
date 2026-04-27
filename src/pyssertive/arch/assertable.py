@@ -2,6 +2,7 @@ import difflib
 import fnmatch
 import sys
 from collections import deque
+from collections.abc import Callable
 
 import grimp
 
@@ -66,6 +67,37 @@ class AssertableArch:
         new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
         self._ignored.extend(new_patterns)
         return self
+
+    def module(
+        self,
+        name: str,
+        callback: Callable[["AssertableArch | _MultiAssertableArch"], object] | None = None,
+    ) -> "AssertableArch | _MultiAssertableArch":
+        """
+        Scope into a submodule, returning an assertable bound to it.
+
+        ``name`` is resolved relative to the current scope unless it
+        already starts with the parent path. Glob patterns are
+        expanded against the graph. With a ``callback`` the nested
+        assertable is passed to it and the outer scope is returned
+        for continued chaining; without one the nested assertable is
+        returned directly.
+        """
+        resolved = self._resolve_submodule(name)
+        nested: AssertableArch | _MultiAssertableArch
+        if _is_glob_pattern(resolved):
+            nested = _MultiAssertableArch(_expand_glob_source(resolved))
+        else:
+            nested = AssertableArch(resolved)
+        if callback is not None:
+            callback(nested)
+            return self
+        return nested
+
+    def _resolve_submodule(self, name: str) -> str:
+        if name == self._module or name.startswith(f"{self._module}."):
+            return name
+        return f"{self._module}.{name}"
 
     def should_depend_on(
         self, target: str | list[str], directly: bool = False
