@@ -246,6 +246,10 @@ def test_should_not_depend_on_should_raise_when_target_glob_matches_no_modules()
 
 
 def test_assert_arch_glob_should_expose_should_depend_on():
+    # bc[1] is fnmatch char-class — matches exactly "bc1" to construct a
+    # single-member multi-arch. Needed because the views in glob_pkg do not
+    # share a common dependency, so a wider glob would fail for unrelated
+    # reasons rather than exercise the multi-arch dispatch.
     assert_arch("glob_pkg.bc[1].views").should_depend_on("glob_pkg.bc1.models")
 
 
