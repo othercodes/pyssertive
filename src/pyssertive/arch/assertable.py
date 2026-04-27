@@ -97,6 +97,11 @@ class AssertableArch:
     def _resolve_submodule(self, name: str) -> str:
         if name == self._module or name.startswith(f"{self._module}."):
             return name
+        if self._module.startswith(f"{name}."):
+            raise ValueError(
+                f"module({name!r}) attempts to ascend from {self._module!r}; "
+                "module() can only descend into the current scope."
+            )
         return f"{self._module}.{name}"
 
     def should_depend_on(

@@ -56,6 +56,11 @@ def test_module_should_raise_when_submodule_does_not_exist():
         assert_arch("clean_pkg").module("nonexistent_xyz")
 
 
+def test_module_should_raise_clear_error_when_attempting_to_ascend():
+    with pytest.raises(ValueError, match="ascend"):
+        assert_arch("clean_pkg.application").module("clean_pkg")
+
+
 def test_module_should_expand_glob_pattern_within_scope():
     assert_arch("glob_pkg").module(
         "*.views", lambda v: v.should_not_depend_on("glob_pkg.bc2.models")
