@@ -193,6 +193,16 @@ def test_should_not_depend_on_should_hint_top_level_when_external_submodule_targ
         assert_arch("clean_pkg.domain").should_not_depend_on("dataclasses.dataclass")
 
 
+def test_assert_arch_should_suggest_close_match_when_source_typo():
+    with pytest.raises(ValueError, match="Did you mean 'clean_pkg.domain'"):
+        assert_arch("clean_pkg.domian")
+
+
+def test_should_not_depend_on_should_suggest_close_match_when_target_typo():
+    with pytest.raises(ValueError, match="Did you mean 'clean_pkg.application'"):
+        assert_arch("clean_pkg.domain").should_not_depend_on("clean_pkg.applicaton")
+
+
 def test_should_only_depend_on_should_not_treat_user_module_named_stdlib_as_token():
     with pytest.raises(AssertionError) as exc_info:
         assert_arch("user_stdlib_pkg.consumer").should_only_depend_on(["stdlib"])

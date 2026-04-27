@@ -1,3 +1,4 @@
+import difflib
 import fnmatch
 import sys
 from collections import deque
@@ -41,7 +42,7 @@ class AssertableArch:
 
     Source and target modules are validated against the import graph;
     typos and unsupported external submodule paths raise ``ValueError``
-    instead of producing cryptic engine errors mid-assertion.
+    with a "Did you mean ...?" hint when a close match exists.
     """
 
     def __init__(self, module: str) -> None:
@@ -51,11 +52,12 @@ class AssertableArch:
         if module not in graph.modules:
             raise ValueError(
                 f"Source module {module!r} is not in the import graph for "
-                f"package {self._package!r}."
+                f"package {self._package!r}.{_did_you_mean(module, graph)}"
             )
         self._ignored: list[str] = []
 
     def ignoring(self, patterns: str | list[str]) -> "AssertableArch":
+        """Add ``fnmatch`` glob patterns excluded from chain checks and dependency lists."""
         new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
         self._ignored.extend(new_patterns)
         return self
@@ -63,6 +65,13 @@ class AssertableArch:
     def should_depend_on(
         self, target: str | list[str], directly: bool = False
     ) -> "AssertableArch":
+        """
+        Assert the source imports each ``target`` directly or transitively.
+
+        ``directly=True`` requires a direct import edge — useful when
+        the source must own the import explicitly rather than picking
+        it up via a re-export.
+        """
         targets = [target] if isinstance(target, str) else list(target)
         graph = build_graph(self._package)
         for candidate in targets:
@@ -82,6 +91,14 @@ class AssertableArch:
     def should_not_depend_on(
         self, target: str | list[str], directly: bool = False
     ) -> "AssertableArch":
+        """
+        Assert the source does not import any ``target``, direct or transitive.
+
+        ``directly=True`` only forbids direct imports; transitive
+        paths through other modules are tolerated. Useful when the
+        rule is "you must not write the import yourself" but reaching
+        the target via an intermediate is acceptable.
+        """
         targets = [target] if isinstance(target, str) else list(target)
         graph = build_graph(self._package)
         for candidate in targets:
@@ -102,6 +119,14 @@ class AssertableArch:
     def should_only_depend_on(
         self, allowed: str | list[str], directly: bool = True
     ) -> "AssertableArch":
+        """
+        Assert every dependency of the source matches an entry in ``allowed``.
+
+        Direct imports by default — what the module's source code
+        actually uses. ``directly=False`` extends the check to the
+        transitive closure for stricter purity rules (e.g. domain
+        code must not transitively reach Django through any helper).
+        """
         allowed_list = [allowed] if isinstance(allowed, str) else list(allowed)
         graph = build_graph(self._package)
         if directly:
@@ -118,14 +143,17 @@ class AssertableArch:
             and not any(dep == a or dep.startswith(f"{a}.") for a in explicit)
         )
         if violations:
-            self._raise_violations(f"should only depend on {allowed_list}, but also imports", violations)
+            self._raise_violations(
+                f"should only depend on [{', '.join(allowed_list)}] but imports",
+                violations,
+            )
         return self
 
     def _validate_target(self, target: str, graph: grimp.ImportGraph) -> None:
         if target in graph.modules:
             return
         top = target.split(".")[0]
-        if top in graph.modules:
+        if top in graph.modules and top != self._package:
             raise ValueError(
                 f"Target {target!r} is not a node in the graph. External "
                 f"submodules are tracked at the top-level only — use "
@@ -133,7 +161,7 @@ class AssertableArch:
             )
         raise ValueError(
             f"Target {target!r} is not in the import graph for "
-            f"package {self._package!r}."
+            f"package {self._package!r}.{_did_you_mean(target, graph)}"
         )
 
     def _raise_violations(self, action: str, items: list[str]) -> None:
@@ -162,3 +190,10 @@ class AssertableArch:
                 visited.add(next_mod)
                 queue.append((next_mod, new_path))
         return None
+
+
+def _did_you_mean(name: str, graph: grimp.ImportGraph) -> str:
+    matches = difflib.get_close_matches(name, list(graph.modules), n=1, cutoff=0.7)
+    if matches:
+        return f" Did you mean {matches[0]!r}?"
+    return ""
