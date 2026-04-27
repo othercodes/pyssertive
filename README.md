@@ -315,7 +315,7 @@ with assert_num_queries(2):
 
 ### Architecture Assertions
 
-Fluent assertions for the **shape** of your imports — enforce layer boundaries, bounded-context isolation, allow-lists, and forbidden dependencies as ordinary pytest tests. Powered by [`grimp`](https://github.com/seddonym/grimp) and inspired by [Pest's Arch Testing](https://pestphp.com/docs/arch-testing).
+Fluent assertions for the **shape** of your imports — enforce layer boundaries, bounded-context isolation, allow-lists, and forbidden dependencies as ordinary pytest tests. Powered by [`grimp`](https://github.com/seddonym/grimp).
 
 ```python
 from pyssertive.arch import assert_arch
@@ -389,7 +389,7 @@ A pattern that matches no module raises `ValueError` rather than passing silentl
 
 #### Scoped callbacks
 
-Pest-style callbacks let a block of related assertions read as one expression:
+Scoped callbacks let a block of related assertions read as one expression:
 
 ```python
 def test_domain_module_internals():

@@ -30,7 +30,7 @@ class _AssertArch:
         Return an assertable bound to ``module``. Glob patterns expand
         across the import graph. When ``callback`` is given it is
         invoked with the assertable so callers can scope a block of
-        assertions Pest-style.
+        assertions inline.
         """
         arch: AssertableArch | _MultiAssertableArch = (
             _MultiAssertableArch(_expand_glob_source(module)) if _is_glob_pattern(module) else AssertableArch(module)
