@@ -7,6 +7,7 @@ from pyssertive.arch.assertable import (
     _is_glob_pattern,
 )
 from pyssertive.arch.layers import AssertableLayers
+from pyssertive.arch.modules import AssertableModules
 
 __all__ = ["assert_arch"]
 
@@ -43,6 +44,10 @@ class _AssertArch:
     def layers(self, layers: list[str]) -> AssertableLayers:
         """Return an :class:`AssertableLayers` over the ordered layer list."""
         return AssertableLayers(layers)
+
+    def modules(self, modules: list[str]) -> AssertableModules:
+        """Return an :class:`AssertableModules` over the unordered module set."""
+        return AssertableModules(modules)
 
 
 assert_arch = _AssertArch()
