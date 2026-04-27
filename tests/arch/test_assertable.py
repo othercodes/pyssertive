@@ -107,3 +107,44 @@ def test_should_depend_on_should_raise_listing_all_missing_targets_when_list_par
     message = str(exc_info.value)
     assert "transitive_pkg.d" in message
     assert "transitive_pkg.b" not in message
+
+
+def test_should_only_depend_on_should_pass_when_all_imports_are_in_allowlist():
+    assert_arch("clean_pkg.application").should_only_depend_on(["clean_pkg.domain"])
+
+
+def test_should_only_depend_on_should_pass_when_module_only_uses_stdlib_and_stdlib_token_listed():
+    assert_arch("clean_pkg.domain").should_only_depend_on(["stdlib"])
+
+
+def test_should_only_depend_on_should_treat_stdlib_token_as_any_python_stdlib_module():
+    assert_arch("stdlib_pkg.wide").should_only_depend_on(["stdlib"])
+
+
+def test_should_only_depend_on_should_raise_when_module_imports_unlisted_package():
+    with pytest.raises(AssertionError):
+        assert_arch("clean_pkg.application").should_only_depend_on(["stdlib"])
+
+
+def test_should_only_depend_on_should_list_all_violating_imports_in_error_message():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("clean_pkg.application").should_only_depend_on(["stdlib"])
+
+    message = str(exc_info.value)
+    assert "clean_pkg.domain" in message
+
+
+def test_should_only_depend_on_should_raise_for_stdlib_imports_when_stdlib_token_not_in_allowlist():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("clean_pkg.domain").should_only_depend_on(["clean_pkg.domain"])
+
+    message = str(exc_info.value)
+    assert "dataclasses" in message
+
+
+def test_should_only_depend_on_should_return_self_for_chaining():
+    arch = assert_arch("clean_pkg.application")
+
+    result = arch.should_only_depend_on(["clean_pkg.domain"])
+
+    assert result is arch
