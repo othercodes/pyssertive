@@ -148,3 +148,53 @@ def test_should_only_depend_on_should_return_self_for_chaining():
     result = arch.should_only_depend_on(["clean_pkg.domain"])
 
     assert result is arch
+
+
+def test_should_only_depend_on_should_accept_single_string():
+    assert_arch("clean_pkg.domain").should_only_depend_on("stdlib")
+
+
+def test_should_only_depend_on_should_check_transitively_when_directly_false():
+    assert_arch("clean_pkg.application").should_only_depend_on(
+        ["stdlib", "clean_pkg.domain"], directly=False
+    )
+
+
+def test_should_only_depend_on_should_raise_with_transitive_violation_when_directly_false():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("clean_pkg.application").should_only_depend_on(
+            ["clean_pkg.domain"], directly=False
+        )
+
+    assert "dataclasses" in str(exc_info.value)
+
+
+def test_should_depend_on_should_check_only_direct_imports_when_directly_true():
+    assert_arch("transitive_pkg.a").should_depend_on("transitive_pkg.b", directly=True)
+
+
+def test_should_depend_on_should_raise_when_directly_true_and_only_transitive_path_exists():
+    with pytest.raises(AssertionError):
+        assert_arch("transitive_pkg.a").should_depend_on("transitive_pkg.c", directly=True)
+
+
+def test_assert_arch_should_raise_when_source_module_not_in_graph():
+    with pytest.raises(ValueError, match="not in the import graph"):
+        assert_arch("clean_pkg.does_not_exist")
+
+
+def test_should_not_depend_on_should_raise_when_target_not_in_graph():
+    with pytest.raises(ValueError, match="not in the import graph"):
+        assert_arch("clean_pkg.domain").should_not_depend_on("totally_unknown_xyz")
+
+
+def test_should_not_depend_on_should_hint_top_level_when_external_submodule_target():
+    with pytest.raises(ValueError, match="top-level"):
+        assert_arch("clean_pkg.domain").should_not_depend_on("dataclasses.dataclass")
+
+
+def test_should_only_depend_on_should_not_treat_user_module_named_stdlib_as_token():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("user_stdlib_pkg.consumer").should_only_depend_on(["stdlib"])
+
+    assert "user_stdlib_pkg.stdlib" in str(exc_info.value)
