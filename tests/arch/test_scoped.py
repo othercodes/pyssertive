@@ -131,3 +131,13 @@ def test_multi_assertable_arch_module_should_inherit_ignored_from_parent_scope()
         "models",
         lambda m: m.should_not_depend_on("glob_pkg.*.views"),
     )
+
+
+def test_multi_assertable_arch_module_with_callback_should_return_outer_self():
+    multi = assert_arch("glob_pkg.bc[123]")
+
+    result = multi.module(
+        "models", lambda m: m.should_not_depend_on("glob_pkg.bc1.views")
+    )
+
+    assert result is multi
