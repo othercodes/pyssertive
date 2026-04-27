@@ -60,3 +60,50 @@ def test_should_not_depend_on_should_aggregate_violations_across_list_in_error_m
     message = str(exc_info.value)
     assert "transitive_pkg.b" in message
     assert "transitive_pkg.c" in message
+
+
+def test_should_depend_on_should_pass_when_module_directly_imports_target():
+    assert_arch("clean_pkg.application").should_depend_on("clean_pkg.domain")
+
+
+def test_should_depend_on_should_pass_when_dependency_is_transitive():
+    assert_arch("transitive_pkg.a").should_depend_on("transitive_pkg.c")
+
+
+def test_should_depend_on_should_raise_when_target_is_not_imported():
+    with pytest.raises(AssertionError):
+        assert_arch("clean_pkg.domain").should_depend_on("clean_pkg.infrastructure")
+
+
+def test_should_depend_on_should_include_module_and_target_in_error_message():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("clean_pkg.domain").should_depend_on("clean_pkg.infrastructure")
+
+    message = str(exc_info.value)
+    assert "clean_pkg.domain" in message
+    assert "clean_pkg.infrastructure" in message
+
+
+def test_should_depend_on_should_return_self_for_chaining():
+    arch = assert_arch("clean_pkg.application")
+
+    result = arch.should_depend_on("clean_pkg.domain")
+
+    assert result is arch
+
+
+def test_should_depend_on_should_accept_list_of_targets():
+    assert_arch("clean_pkg.infrastructure").should_depend_on(
+        ["clean_pkg.domain", "clean_pkg.application"]
+    )
+
+
+def test_should_depend_on_should_raise_listing_all_missing_targets_when_list_partially_satisfied():
+    with pytest.raises(AssertionError) as exc_info:
+        assert_arch("transitive_pkg.a").should_depend_on(
+            ["transitive_pkg.b", "transitive_pkg.d"]
+        )
+
+    message = str(exc_info.value)
+    assert "transitive_pkg.d" in message
+    assert "transitive_pkg.b" not in message

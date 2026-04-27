@@ -6,6 +6,19 @@ class AssertableArch:
         self._module = module
         self._package = module.split(".")[0]
 
+    def should_depend_on(self, target: str | list[str]) -> "AssertableArch":
+        targets = [target] if isinstance(target, str) else list(target)
+        graph = build_graph(self._package)
+        missing: list[str] = []
+        for candidate in targets:
+            if graph.find_shortest_chain(self._module, candidate) is None:
+                missing.append(candidate)
+        if missing:
+            raise AssertionError(
+                f"{self._module} should depend on:\n  - " + "\n  - ".join(missing)
+            )
+        return self
+
     def should_not_depend_on(
         self, target: str | list[str], directly: bool = False
     ) -> "AssertableArch":
