@@ -346,3 +346,10 @@ def test_should_not_depend_on_should_treat_package_target_as_any_descendant():
 
 def test_should_depend_on_should_treat_package_target_as_any_descendant():
     assert_arch("ignoring_pkg.source").should_depend_on("ignoring_pkg.legacy")
+
+
+def test_should_not_depend_on_with_ignoring_should_treat_package_target_as_any_descendant():
+    with pytest.raises(AssertionError):
+        assert_arch("ignoring_pkg.source").ignoring(
+            "ignoring_pkg.modern.*"
+        ).should_not_depend_on("ignoring_pkg.legacy")
