@@ -310,3 +310,15 @@ def test_should_only_depend_on_should_still_flag_dep_reachable_without_ignored_p
         ).should_only_depend_on(["ignoring_pkg.source"], directly=False)
 
     assert "ignoring_pkg.forbidden_direct" in str(exc_info.value)
+
+
+def test_should_not_depend_on_should_pass_when_source_module_is_ignored():
+    assert_arch("ignoring_pkg.legacy.via").ignoring(
+        "ignoring_pkg.legacy.*"
+    ).should_not_depend_on("ignoring_pkg.forbidden")
+
+
+def test_should_only_depend_on_should_pass_when_source_module_is_ignored():
+    assert_arch("ignoring_pkg.legacy.via").ignoring(
+        "ignoring_pkg.legacy.*"
+    ).should_only_depend_on(["nothing"], directly=False)

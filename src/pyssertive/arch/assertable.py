@@ -229,6 +229,8 @@ class AssertableArch:
     def _upstream_respecting_ignoring(self, graph: grimp.ImportGraph) -> set[str]:
         if not self._ignored:
             return set(graph.find_upstream_modules(self._module))
+        if self._is_ignored(self._module):
+            return set()
         visited: set[str] = {self._module}
         queue: deque[str] = deque([self._module])
         upstream: set[str] = set()
@@ -245,6 +247,8 @@ class AssertableArch:
     def _find_chain(self, graph: grimp.ImportGraph, target: str) -> tuple[str, ...] | None:
         if not self._ignored:
             return graph.find_shortest_chain(self._module, target)
+        if self._is_ignored(self._module):
+            return None
         visited = {self._module}
         queue: deque[tuple[str, tuple[str, ...]]] = deque(
             [(self._module, (self._module,))]
