@@ -9,6 +9,8 @@ from pyssertive.arch._chains import find_chain, find_upstream, is_ignored
 from pyssertive.arch.graph import build_graph
 
 _STDLIB_TOKEN = "stdlib"
+# fnmatch metacharacters — presence of any of these triggers glob expansion
+# against the import graph rather than literal-string matching.
 _GLOB_CHARS = "*?["
 
 __all__ = ["AssertableArch"]
