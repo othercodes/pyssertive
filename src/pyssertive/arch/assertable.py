@@ -114,10 +114,13 @@ class AssertableArch:
         targets = self._expand_targets(targets, graph)
         for candidate in targets:
             self._validate_target(candidate, graph)
+        direct_deps = (
+            graph.find_modules_directly_imported_by(self._module) if directly else None
+        )
         missing: list[str] = []
         for candidate in targets:
-            if directly:
-                if candidate not in graph.find_modules_directly_imported_by(self._module):
+            if direct_deps is not None:
+                if candidate not in direct_deps:
                     missing.append(candidate)
             else:
                 if self._find_chain(graph, candidate) is None:
@@ -142,10 +145,13 @@ class AssertableArch:
         targets = self._expand_targets(targets, graph)
         for candidate in targets:
             self._validate_target(candidate, graph)
+        direct_deps = (
+            graph.find_modules_directly_imported_by(self._module) if directly else None
+        )
         violations: list[str] = []
         for candidate in targets:
-            if directly:
-                if candidate in graph.find_modules_directly_imported_by(self._module):
+            if direct_deps is not None:
+                if candidate in direct_deps:
                     violations.append(f"{candidate} (direct import)")
             else:
                 chain = self._find_chain(graph, candidate)
