@@ -1,8 +1,9 @@
-from pyssertive.http.client import FluentHttpAssertClient, FluentResponse
-from pyssertive.http.request import RequestBuilder
+from pyssertive.http.html import AssertableHtml
+from pyssertive.http.json import AssertableJson
+from pyssertive.http.response import FluentResponse
 
 __all__ = [
-    "FluentHttpAssertClient",
+    "AssertableHtml",
+    "AssertableJson",
     "FluentResponse",
-    "RequestBuilder",
 ]

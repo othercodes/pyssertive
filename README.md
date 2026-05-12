@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/othercodes/pyssertive/actions/workflows/test.yml/badge.svg)](https://github.com/othercodes/pyssertive/actions/workflows/test.yml)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=othercodes_pyssertive&metric=coverage)](https://sonarcloud.io/summary/new_code?id=othercodes_pyssertive)
 
-Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant testing API.
+Fluent, chainable assertions for Python tests — HTTP, architecture, and database. Inspired by Laravel's elegant testing API.
 
 ## Features
 
@@ -23,12 +23,13 @@ Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant tes
 ## Requirements
 
 - Python 3.10+
-- Django 4.2, 5.2, or 6.0
+- Django 4.2, 5.2, or 6.0 (optional, only if using the Django adapter)
 
 ## Installation
 
 ```bash
-pip install pyssertive
+pip install pyssertive            # core
+pip install pyssertive[django]    # with Django adapter
 ```
 
 ## Usage
@@ -37,7 +38,7 @@ pip install pyssertive
 
 ```python
 import pytest
-from pyssertive.http import FluentHttpAssertClient
+from pyssertive.adapters.django import FluentHttpAssertClient
 
 @pytest.fixture
 def client():
@@ -93,22 +94,22 @@ response.assert_ok().assert_json("data.user", lambda user: (
 
 Inside an `AssertableJson` scope the `assert_` prefix is dropped for brevity. Available methods:
 
-| Method | Purpose |
-|---|---|
-| `has(key, count=None)` | Path exists, optionally with item count |
-| `missing(key)` | Path does not exist |
-| `where(key, expected)` | Value matches (exact or callable predicate) |
-| `where_not(key, value)` | Value does not equal `value` (e.g. `where_not("name", None)`) |
-| `where_truthy(key)` | Value is truthy (not None, 0, "", [], {}, False) |
-| `where_falsy(key)` | Value is falsy |
-| `where_type(key, type)` | Value is an instance of `type` |
-| `count(n)` | Current scope has `n` items |
-| `fragment(dict)` / `missing_fragment(dict)` | Subset match / absence |
-| `exact(value)` | Full equality |
-| `is_dict()` / `is_list()` | Type assertion |
-| `structure(schema)` | Keys + types schema validation |
-| `json(path, callback=None)` | Scope into a sub-path (recursive) |
-| `matches_schema(schema)` | Validate against a JSON Schema (dict, file path, or URL) |
+| Method                                      | Purpose                                                       |
+|---------------------------------------------|---------------------------------------------------------------|
+| `has(key, count=None)`                      | Path exists, optionally with item count                       |
+| `missing(key)`                              | Path does not exist                                           |
+| `where(key, expected)`                      | Value matches (exact or callable predicate)                   |
+| `where_not(key, value)`                     | Value does not equal `value` (e.g. `where_not("name", None)`) |
+| `where_truthy(key)`                         | Value is truthy (not None, 0, "", [], {}, False)              |
+| `where_falsy(key)`                          | Value is falsy                                                |
+| `where_type(key, type)`                     | Value is an instance of `type`                                |
+| `count(n)`                                  | Current scope has `n` items                                   |
+| `fragment(dict)` / `missing_fragment(dict)` | Subset match / absence                                        |
+| `exact(value)`                              | Full equality                                                 |
+| `is_dict()` / `is_list()`                   | Type assertion                                                |
+| `structure(schema)`                         | Keys + types schema validation                                |
+| `json(path, callback=None)`                 | Scope into a sub-path (recursive)                             |
+| `matches_schema(schema)`                    | Validate against a JSON Schema (dict, file path, or URL)      |
 
 For ad-hoc use, `assert_json()` without a callback returns the `AssertableJson` directly:
 
@@ -235,16 +236,16 @@ response.assert_ok()\
 
 Inside an `AssertableHtml` scope the `assert_` prefix is dropped for brevity. Available methods:
 
-| Method | Purpose |
-|---|---|
-| `see_html(fragment)` / `dont_see_html(fragment)` | Raw HTML markup match (tags preserved) |
-| `see_text(text)` / `dont_see_text(text)` | Rendered visible text match (tags stripped) |
-| `see_html_in_order([...])` / `see_text_in_order([...])` | Ordered occurrence |
-| `count(selector, n)` | Exactly `n` elements match the CSS selector |
-| `exists(selector)` | At least one element matches |
-| `missing(selector)` | No elements match |
-| `html(selector, callback=None)` | Scope into the first matching element (recursive) |
-| `html_contains(fragment)` | Django's semantic HTML comparison |
+| Method                                                  | Purpose                                           |
+|---------------------------------------------------------|---------------------------------------------------|
+| `see_html(fragment)` / `dont_see_html(fragment)`        | Raw HTML markup match (tags preserved)            |
+| `see_text(text)` / `dont_see_text(text)`                | Rendered visible text match (tags stripped)       |
+| `see_html_in_order([...])` / `see_text_in_order([...])` | Ordered occurrence                                |
+| `count(selector, n)`                                    | Exactly `n` elements match the CSS selector       |
+| `exists(selector)`                                      | At least one element matches                      |
+| `missing(selector)`                                     | No elements match                                 |
+| `html(selector, callback=None)`                         | Scope into the first matching element (recursive) |
+| `html_contains(fragment)`                               | Django's semantic HTML comparison                 |
 
 For ad-hoc use, `assert_html()` without a callback returns the `AssertableHtml` directly:
 
@@ -300,7 +301,7 @@ response.dd()             # Dump and die (raises exception)
 ### Database Assertions
 
 ```python
-from pyssertive.db import (
+from pyssertive.adapters.django.db import (
     assert_model_exists,
     assert_model_count,
     assert_num_queries,
@@ -337,15 +338,15 @@ def test_views_use_drf():
 
 #### Method catalog
 
-| Method | Purpose |
-|---|---|
-| `should_depend_on(target \| [target], directly=False)` | Source must import target(s); transitive by default |
-| `should_not_depend_on(target \| [target], directly=False)` | Source must not import target(s); transitive by default |
+| Method                                                       | Purpose                                                                                                                  |
+|--------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `should_depend_on(target \| [target], directly=False)`       | Source must import target(s); transitive by default                                                                      |
+| `should_not_depend_on(target \| [target], directly=False)`   | Source must not import target(s); transitive by default                                                                  |
 | `should_only_depend_on(allowed \| [allowed], directly=True)` | Every dependency must match the allow-list; direct by default. `"stdlib"` expands to any `sys.stdlib_module_names` entry |
-| `ignoring(patterns)` | fnmatch glob patterns skipped during chain traversal — alternate non-ignored paths still flag |
-| `module(name, callback=None)` | Scope into a submodule (recursive, glob supported) |
-| `assert_arch.layers([...]).should_be_independent()` | Strict layered architecture — each layer may only depend on layers preceding it in the list |
-| `assert_arch.modules([...]).should_be_isolated()` | Mutual isolation across an unordered set; combine with `ignoring(...)` to allow specific bridges |
+| `ignoring(patterns)`                                         | fnmatch glob patterns skipped during chain traversal — alternate non-ignored paths still flag                            |
+| `module(name, callback=None)`                                | Scope into a submodule (recursive, glob supported)                                                                       |
+| `assert_arch.layers([...]).should_be_independent()`          | Strict layered architecture — each layer may only depend on layers preceding it in the list                              |
+| `assert_arch.modules([...]).should_be_isolated()`            | Mutual isolation across an unordered set; combine with `ignoring(...)` to allow specific bridges                         |
 
 #### Layered architecture
 

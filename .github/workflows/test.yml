@@ -67,10 +67,60 @@ jobs:
 
       - name: Run mypy
         run: uv run mypy src/pyssertive
-        continue-on-error: true
 
-  test:
-    name: Test (py${{ matrix.python-version }}, dj${{ matrix.django-version }})
+  test-core:
+    name: Test core (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install core dependencies (no Django)
+        run: uv sync --no-default-groups --group test-core
+
+      - name: Verify Django is not installed
+        run: |
+          if uv run python -c "import django" 2>/dev/null; then
+            echo "ERROR: Django should not be installed for the core job"
+            exit 1
+          fi
+          echo "OK: Django absent, core runs against pyssertive[core] only"
+
+      - name: Run core tests
+        env:
+          COVERAGE_FILE: .coverage.core-py${{ matrix.python-version }}
+        run: |
+          uv run pytest tests/test_protocol.py tests/http/ tests/arch/ \
+            --cov-fail-under=0 --cov-report=
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-core-py${{ matrix.python-version }}
+          path: .coverage.core-py${{ matrix.python-version }}
+          include-hidden-files: true
+          if-no-files-found: error
+
+  test-django:
+    name: Test Django adapter (py${{ matrix.python-version }}, dj${{ matrix.django-version }})
     runs-on: ubuntu-latest
     needs: [lint]
 
@@ -119,25 +169,30 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install Django adapter dependencies
         run: |
-          uv sync --all-extras
+          uv sync --extra django --group test-django
           uv pip install "Django~=${{ matrix.django-version }}.0"
 
-      - name: Run tests
-        run: uv run pytest --cov=pyssertive --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=100
+      - name: Run Django adapter tests
+        env:
+          COVERAGE_FILE: .coverage.django-py${{ matrix.python-version }}-dj${{ matrix.django-version }}
+        run: |
+          uv run pytest tests/adapters/django/ \
+            --cov-fail-under=0 --cov-report=
 
-      - name: Upload coverage artifact
-        if: matrix.python-version == '3.14' && matrix.django-version == '6.0'
+      - name: Upload coverage data
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
-          path: coverage.xml
+          name: coverage-django-py${{ matrix.python-version }}-dj${{ matrix.django-version }}
+          path: .coverage.django-py${{ matrix.python-version }}-dj${{ matrix.django-version }}
+          include-hidden-files: true
+          if-no-files-found: error
 
-  sonarcloud:
-    name: SonarCloud Analysis
+  coverage:
+    name: Coverage (merge + 100% gate)
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [test-core, test-django]
 
     steps:
       - name: Checkout
@@ -146,7 +201,48 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Download coverage artifact
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Download all coverage data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: Combine coverage and enforce 100% gate
+        run: |
+          uv run coverage combine
+          uv run coverage report --fail-under=100
+          uv run coverage xml -o coverage.xml
+
+      - name: Upload merged coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: [coverage]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download merged coverage
         uses: actions/download-artifact@v8
         with:
           name: coverage-report
@@ -159,36 +255,56 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, sonarcloud]
+    needs: [lint, typecheck, test-core, test-django, coverage, sonarcloud]
     if: always()
 
     steps:
       - name: Check all jobs
         run: |
           echo "===== Job Results ====="
-          echo "Lint:       ${{ needs.lint.result }}"
-          echo "Typecheck:  ${{ needs.typecheck.result }}"
-          echo "Test:       ${{ needs.test.result }}"
-          echo "SonarCloud: ${{ needs.sonarcloud.result }}"
+          echo "Lint:           ${{ needs.lint.result }}"
+          echo "Typecheck:      ${{ needs.typecheck.result }}"
+          echo "Test (core):    ${{ needs.test-core.result }}"
+          echo "Test (django):  ${{ needs.test-django.result }}"
+          echo "Coverage:       ${{ needs.coverage.result }}"
+          echo "SonarCloud:     ${{ needs.sonarcloud.result }}"
           echo "======================="
+
+          fail=0
 
           if [ "${{ needs.lint.result }}" != "success" ]; then
             echo "❌ Lint failed"
-            exit 1
+            fail=1
           fi
 
-          if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "❌ Tests failed"
-            exit 1
+          if [ "${{ needs.typecheck.result }}" != "success" ]; then
+            echo "❌ Typecheck failed"
+            fail=1
           fi
 
-          if [ "${{ needs.typecheck.result }}" == "failure" ]; then
-            echo "⚠️ Typecheck failed (non-blocking)"
+          if [ "${{ needs.test-core.result }}" != "success" ]; then
+            echo "❌ Tests (core) failed"
+            fail=1
+          fi
+
+          if [ "${{ needs.test-django.result }}" != "success" ]; then
+            echo "❌ Tests (Django) failed"
+            fail=1
+          fi
+
+          if [ "${{ needs.coverage.result }}" != "success" ]; then
+            echo "❌ Coverage gate failed"
+            fail=1
           fi
 
           if [ "${{ needs.sonarcloud.result }}" != "success" ]; then
             echo "❌ SonarCloud failed"
+            fail=1
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo "🛑 Release blocked — fix the failures above."
             exit 1
           fi
 
-          echo "✅ All required checks passed!"
+          echo "✅ All required checks passed — release-ready."

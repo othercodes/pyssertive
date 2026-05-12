@@ -104,6 +104,100 @@ def test_html_contains_fails(doc: AssertableHtml) -> None:
         doc.html_contains("<h1>Missing</h1>")
 
 
+def test_html_contains_should_be_attribute_order_insensitive() -> None:
+    doc = AssertableHtml('<a href="/home" class="btn">go</a>')
+
+    doc.html_contains('<a class="btn" href="/home">go</a>')
+
+
+def test_html_contains_should_be_class_order_insensitive() -> None:
+    doc = AssertableHtml('<span class="alpha beta gamma">x</span>')
+
+    doc.html_contains('<span class="gamma alpha beta">x</span>')
+
+
+def test_html_contains_should_normalize_whitespace_in_text() -> None:
+    doc = AssertableHtml("<p>Hello   world\n  again</p>")
+
+    doc.html_contains("<p>Hello world again</p>")
+
+
+def test_html_contains_should_ignore_insignificant_whitespace_between_children() -> None:
+    doc = AssertableHtml("<ul>\n  <li>one</li>\n  <li>two</li>\n</ul>")
+
+    doc.html_contains("<ul><li>one</li><li>two</li></ul>")
+
+
+def test_html_contains_should_reject_when_attributes_differ() -> None:
+    doc = AssertableHtml('<a href="/home" class="btn">go</a>')
+
+    with pytest.raises(AssertionError):
+        doc.html_contains('<a href="/away" class="btn">go</a>')
+
+
+def test_html_contains_should_reject_extra_children_in_candidate() -> None:
+    doc = AssertableHtml("<ul><li>one</li><li>two</li></ul>")
+
+    with pytest.raises(AssertionError):
+        doc.html_contains("<ul><li>one</li></ul>")
+
+
+def test_html_contains_should_match_plain_text_fragment() -> None:
+    doc = AssertableHtml("<p>Rendered &amp; delivered</p>")
+
+    doc.html_contains("Rendered & delivered")
+
+
+def test_html_contains_should_match_multi_root_fragment_in_sibling_order() -> None:
+    doc = AssertableHtml("<div><h1>Title</h1><p>Body</p><footer>End</footer></div>")
+
+    doc.html_contains("<h1>Title</h1><p>Body</p>")
+
+
+def test_html_contains_should_reject_multi_root_fragment_in_wrong_order() -> None:
+    doc = AssertableHtml("<div><h1>Title</h1><p>Body</p></div>")
+
+    with pytest.raises(AssertionError):
+        doc.html_contains("<p>Body</p><h1>Title</h1>")
+
+
+def test_html_contains_should_pass_for_empty_fragment(doc: AssertableHtml) -> None:
+    doc.html_contains("")
+
+
+def test_html_contains_should_reject_when_tag_names_differ() -> None:
+    doc = AssertableHtml("<div><p>x</p></div>")
+
+    with pytest.raises(AssertionError):
+        doc.html_contains("<div><span>x</span></div>")
+
+
+def test_html_contains_should_reject_when_needle_text_position_holds_a_tag() -> None:
+    doc = AssertableHtml("<div><b>text</b><span>x</span></div>")
+
+    with pytest.raises(AssertionError):
+        doc.html_contains("<div>text<span>x</span></div>")
+
+
+def test_html_contains_should_reject_when_needle_tag_position_holds_text() -> None:
+    doc = AssertableHtml("<div>text<span>x</span></div>")
+
+    with pytest.raises(AssertionError):
+        doc.html_contains("<div><b>text</b><span>x</span></div>")
+
+
+def test_html_contains_should_match_mixed_text_and_tag_fragment() -> None:
+    doc = AssertableHtml("<p>Hello <b>world</b></p>")
+
+    doc.html_contains("Hello <b>world</b>")
+
+
+def test_html_contains_should_skip_non_matching_first_root_in_multi_root_search() -> None:
+    doc = AssertableHtml("<div><h1>Other</h1><p>noise</p><h1>Title</h1><p>Body</p></div>")
+
+    doc.html_contains("<h1>Title</h1><p>Body</p>")
+
+
 def test_count_passes(doc: AssertableHtml) -> None:
     doc.count("tbody tr.order", 3)
 

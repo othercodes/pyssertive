@@ -1,6 +1,6 @@
 import pytest
 
-from pyssertive.http.client import FluentResponse
+from pyssertive.adapters.django import FluentResponse
 
 
 @pytest.mark.django_db

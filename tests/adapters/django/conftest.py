@@ -1,6 +1,6 @@
 import pytest
 
-from pyssertive.http.client import FluentHttpAssertClient
+from pyssertive.adapters.django import FluentHttpAssertClient
 
 
 @pytest.fixture

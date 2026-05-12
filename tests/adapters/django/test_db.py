@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from pyssertive.db import (
+from pyssertive.adapters.django.db import (
     assert_model_count,
     assert_model_exists,
     assert_model_not_exists,

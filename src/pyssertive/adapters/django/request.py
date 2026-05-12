@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from django.contrib.auth.models import AbstractBaseUser
 from django.http import HttpRequest
 from django.test import RequestFactory
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
 
 
 class RequestBuilder:
@@ -17,7 +19,7 @@ class RequestBuilder:
 
     Example::
 
-        from pyssertive.http.request import RequestBuilder
+        from pyssertive.adapters.django import RequestBuilder
 
         request = (
             RequestBuilder()

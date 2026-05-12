@@ -1,7 +1,7 @@
 [project]
 name = "pyssertive"
 dynamic = ["version"]
-description = "Fluent, chainable assertions for Django tests. Inspired by Laravel's elegant testing API."
+description = "Fluent, chainable assertions for Python tests — HTTP, architecture, and database. Inspired by Laravel's elegant testing API."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
@@ -30,12 +30,14 @@ classifiers = [
 ]
 
 dependencies = [
-    "Django>=4.2",
     "beautifulsoup4>=4.12",
     "grimp>=3.0",
     "jsonschema>=4.26.0",
     "typing_extensions>=4.0; python_version < '3.11'",
 ]
+
+[project.optional-dependencies]
+django = ["Django>=4.2"]
 
 [project.urls]
 Homepage = "https://github.com/othercodes/pyssertive"
@@ -57,13 +59,20 @@ version-file = "src/pyssertive/_version.py"
 packages = ["src/pyssertive"]
 
 [dependency-groups]
-dev = [
+test-core = [
     "pytest>=8.0.0",
-    "pytest-django>=4.8.0",
     "pytest-cov>=6.0.0",
+    "types-jsonschema>=4.0",
+]
+test-django = [
+    {include-group = "test-core"},
+    "pytest-django>=4.8.0",
+    "django-stubs>=5.0.0",
+]
+dev = [
+    {include-group = "test-django"},
     "ruff>=0.15.9",
     "mypy>=1.0.0",
-    "django-stubs>=5.0.0",
 ]
 
 [tool.ruff]
@@ -93,6 +102,14 @@ addopts = "--cov=pyssertive --cov-report=term-missing --cov-fail-under=100"
 branch = true
 source = ["src/pyssertive"]
 omit = ["src/pyssertive/_version.py"]
+
+[tool.coverage.paths]
+# Maps coverage data from different runners (different absolute paths) to a single canonical location
+# so `coverage combine` can merge data files produced by parallel CI jobs.
+source = [
+    "src/",
+    "*/pyssertive/src/",
+]
 
 [tool.coverage.report]
 exclude_lines = [

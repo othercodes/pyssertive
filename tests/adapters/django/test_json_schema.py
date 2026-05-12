@@ -6,10 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pyssertive.http.client import FluentHttpAssertClient
+from pyssertive.adapters.django import FluentHttpAssertClient
 from pyssertive.http.json import AssertableJson
 
-SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
+SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "schemas"
 
 SAMPLE = {
     "user": {
