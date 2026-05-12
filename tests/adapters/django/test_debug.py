@@ -6,7 +6,9 @@ from pyssertive.adapters.django import FluentHttpAssertClient, FluentResponse
 
 
 @pytest.mark.django_db
-def test_dump_json(fluent_admin_client, capsys):
+def test_dump_should_pretty_print_json_when_content_type_is_json(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/json/")
     result = response.dump()
     assert result is response
@@ -16,7 +18,9 @@ def test_dump_json(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_plain_text(fluent_admin_client, capsys):
+def test_dump_should_print_body_when_content_type_is_plain_text(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/plain-text/")
     result = response.dump()
     assert result is response
@@ -25,7 +29,9 @@ def test_dump_plain_text(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_with_explicit_format(fluent_admin_client, capsys):
+def test_dump_should_use_explicit_content_format_when_provided(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/json/")
     result = response.dump(content_format="text/plain")
     assert result is response
@@ -34,7 +40,9 @@ def test_dump_with_explicit_format(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_invalid_json(fluent_admin_client, capsys):
+def test_dump_should_report_invalid_json_when_payload_cannot_be_parsed(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/invalid-json/")
     result = response.dump(content_format="application/json")
     assert result is response
@@ -43,7 +51,9 @@ def test_dump_invalid_json(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_html(fluent_admin_client, capsys):
+def test_dump_should_print_raw_body_when_content_type_is_unknown(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/html/")
     result = response.dump()
     assert result is response
@@ -52,7 +62,9 @@ def test_dump_html(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_headers(fluent_admin_client, capsys):
+def test_dump_headers_should_print_all_response_headers(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/custom-headers/")
     result = response.dump_headers()
     assert result is response
@@ -62,7 +74,9 @@ def test_dump_headers(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_json_method(fluent_admin_client, capsys):
+def test_dump_json_should_pretty_print_payload_when_valid(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/json/")
     result = response.dump_json()
     assert result is response
@@ -72,14 +86,16 @@ def test_dump_json_method(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_json_fails_for_invalid(fluent_admin_client):
+def test_dump_json_should_raise_when_payload_is_invalid(fluent_admin_client: FluentHttpAssertClient):
     response = fluent_admin_client.get("/invalid-json/")
     with pytest.raises(AssertionError, match="not valid JSON"):
         response.dump_json()
 
 
 @pytest.mark.django_db
-def test_dump_session(fluent_admin_client, capsys):
+def test_dump_session_should_print_session_entries_when_session_populated(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/session-set/")
     result = response.dump_session()
     assert result is response
@@ -89,7 +105,7 @@ def test_dump_session(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_session_without_context(capsys):
+def test_dump_session_should_report_missing_context_when_response_has_no_request(capsys: pytest.CaptureFixture[str]):
     response = FluentResponse(HttpResponse("test"))
     result = response.dump_session()
     assert result is response
@@ -98,7 +114,7 @@ def test_dump_session_without_context(capsys):
 
 
 @pytest.mark.django_db
-def test_dump_session_empty(capsys):
+def test_dump_session_should_report_empty_when_session_has_no_entries(capsys: pytest.CaptureFixture[str]):
     client = FluentHttpAssertClient(Client())
     response = client.get("/json/")
     result = response.dump_session()
@@ -108,7 +124,9 @@ def test_dump_session_empty(capsys):
 
 
 @pytest.mark.django_db
-def test_dump_cookies(fluent_admin_client, capsys):
+def test_dump_cookies_should_print_cookies_when_present(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/cookie-set/")
     result = response.dump_cookies()
     assert result is response
@@ -118,14 +136,18 @@ def test_dump_cookies(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dump_cookies_empty(fluent_admin_client, capsys):
+def test_dump_cookies_should_return_self_when_response_has_no_cookies(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/json/")
     result = response.dump_cookies()
     assert result is response
 
 
 @pytest.mark.django_db
-def test_dump_cookies_with_details(fluent_admin_client, capsys):
+def test_dump_cookies_should_include_cookie_attributes_when_set(
+    fluent_admin_client: FluentHttpAssertClient, capsys: pytest.CaptureFixture[str]
+):
     response = fluent_admin_client.get("/cookie-detailed/")
     result = response.dump_cookies()
     assert result is response
@@ -134,7 +156,7 @@ def test_dump_cookies_with_details(fluent_admin_client, capsys):
 
 
 @pytest.mark.django_db
-def test_dd(fluent_admin_client):
+def test_dd_should_raise_runtime_error_after_dumping_response(fluent_admin_client: FluentHttpAssertClient):
     response = fluent_admin_client.get("/json/")
     with pytest.raises(RuntimeError, match="dd\\(\\) called"):
         response.dd()

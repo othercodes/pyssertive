@@ -16,13 +16,13 @@ class _CompleteResponse:
     charset: str | None = "utf-8"
 
 
-def test_protocol_should_accept_a_minimal_response_with_all_attributes() -> None:
+def test_protocol_should_accept_a_minimal_response_with_all_attributes():
     response = _CompleteResponse()
 
     assert isinstance(response, HttpResponseProtocol)
 
 
-def test_protocol_should_accept_simple_cookie_as_cookies_mapping() -> None:
+def test_protocol_should_accept_simple_cookie_as_cookies_mapping():
     cookies: SimpleCookie = SimpleCookie()
     cookies["session"] = "abc123"
     response = _CompleteResponse(cookies=cookies)
@@ -30,7 +30,7 @@ def test_protocol_should_accept_simple_cookie_as_cookies_mapping() -> None:
     assert isinstance(response, HttpResponseProtocol)
 
 
-def test_protocol_should_reject_object_missing_required_attribute() -> None:
+def test_protocol_should_reject_object_missing_required_attribute():
     class _MissingCharset:
         status_code: ClassVar[int] = 200
         content: ClassVar[bytes] = b""
@@ -40,7 +40,7 @@ def test_protocol_should_reject_object_missing_required_attribute() -> None:
     assert not isinstance(_MissingCharset(), HttpResponseProtocol)
 
 
-def test_protocol_should_be_runtime_checkable_for_arbitrary_objects() -> None:
+def test_protocol_should_be_runtime_checkable_for_arbitrary_objects():
     assert not isinstance(object(), HttpResponseProtocol)
     assert not isinstance("not a response", HttpResponseProtocol)
     assert not isinstance(42, HttpResponseProtocol)
