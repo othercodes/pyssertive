@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.test import RequestFactory
 
-from pyssertive.http.request import RequestBuilder
+from pyssertive.adapters.django import RequestBuilder
 
 
 @pytest.fixture

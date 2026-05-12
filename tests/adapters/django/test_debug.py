@@ -2,7 +2,7 @@ import pytest
 from django.http import HttpResponse
 from django.test import Client
 
-from pyssertive.http.client import FluentHttpAssertClient, FluentResponse
+from pyssertive.adapters.django import FluentHttpAssertClient, FluentResponse
 
 
 @pytest.mark.django_db

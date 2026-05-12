@@ -10,11 +10,11 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-from django.http import HttpResponse
+from pyssertive.protocol import HttpResponseProtocol
 
 
 class DebugResponseMixin:
-    _response: HttpResponse
+    _response: HttpResponseProtocol
 
     def dump(self, content_format: str | None = None) -> Self:
         content_type = content_format or self._response.headers.get("Content-Type", "")
@@ -49,19 +49,6 @@ class DebugResponseMixin:
             print(json.dumps(data, indent=2, default=str))
         except JSONDecodeError:
             raise AssertionError("Response content is not valid JSON") from None
-        return self
-
-    def dump_session(self) -> Self:
-        print("\n[Session Data]")
-        if not hasattr(self._response, "wsgi_request"):
-            print("  (no request context available)")
-            return self
-        session = dict(self._response.wsgi_request.session)
-        if session:
-            for key, value in session.items():
-                print(f"  {key}: {value!r}")
-        else:
-            print("  (empty)")
         return self
 
     def dump_cookies(self) -> Self:

@@ -12,9 +12,9 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-from bs4 import BeautifulSoup
-from django.http import HttpResponse
-from django.test import SimpleTestCase
+from bs4 import BeautifulSoup, NavigableString
+
+from pyssertive.protocol import HttpResponseProtocol
 
 if TYPE_CHECKING:
     from bs4 import Tag
@@ -25,6 +25,96 @@ _WS = re.compile(r"\s+")
 
 def _normalize(text: str) -> str:
     return _WS.sub(" ", html_lib.unescape(text)).strip()
+
+
+def _normalize_attrs(tag: Any) -> dict[str, Any]:
+    """Return tag attributes in a comparable, order-insensitive form.
+
+    Multi-valued attributes (e.g. ``class``) are stored by BeautifulSoup
+    as ``list[str]``; converting to ``frozenset`` makes attribute equality
+    insensitive to value order (``class="a b"`` matches ``class="b a"``).
+    """
+    out: dict[str, Any] = {}
+    for key, value in tag.attrs.items():
+        out[key] = frozenset(value) if isinstance(value, list) else value
+    return out
+
+
+def _meaningful_children(tag: Any) -> list[Any]:
+    """Return a tag's children with whitespace-only text nodes dropped."""
+    result: list[Any] = []
+    for child in tag.children:
+        if isinstance(child, NavigableString):
+            if str(child).strip():
+                result.append(child)
+        else:
+            result.append(child)
+    return result
+
+
+def _tags_equivalent(needle: Any, candidate: Any) -> bool:
+    """Recursively test semantic equivalence between two HTML elements.
+
+    Two elements are equivalent when they share tag name, attribute set
+    (order-insensitive, with multi-valued attributes compared as sets),
+    and children. Whitespace-only text nodes are ignored; remaining text
+    content is whitespace-normalized before comparison.
+    """
+    if isinstance(needle, NavigableString):
+        if not isinstance(candidate, NavigableString):
+            return False
+        return _normalize(str(needle)) == _normalize(str(candidate))
+
+    if isinstance(candidate, NavigableString):
+        return False
+
+    if needle.name != candidate.name:
+        return False
+    if _normalize_attrs(needle) != _normalize_attrs(candidate):
+        return False
+
+    needle_children = _meaningful_children(needle)
+    candidate_children = _meaningful_children(candidate)
+    if len(needle_children) != len(candidate_children):
+        return False
+    return all(_tags_equivalent(n, c) for n, c in zip(needle_children, candidate_children, strict=True))
+
+
+def _html_contains_fragment(haystack: Any, fragment: str) -> bool:
+    """Check whether ``haystack`` contains ``fragment`` as a semantic subtree.
+
+    Replaces ``django.test.SimpleTestCase.assertInHTML`` with a pure-BS4
+    implementation so the core remains framework-agnostic.
+    """
+    soup = BeautifulSoup(fragment, "html.parser")
+    roots = _meaningful_children(soup)
+    if not roots:
+        return True
+
+    if all(isinstance(r, NavigableString) for r in roots):
+        needle_text = _normalize(" ".join(str(r) for r in roots))
+        return needle_text in _normalize(haystack.get_text(" "))
+
+    first = roots[0]
+    if isinstance(first, NavigableString):
+        return _normalize(str(first)) in _normalize(haystack.get_text(" "))
+
+    if len(roots) == 1:
+        return any(_tags_equivalent(first, candidate) for candidate in haystack.find_all(first.name))
+
+    # Multi-root fragment: roots must appear as consecutive siblings.
+    for candidate in haystack.find_all(first.name):
+        if not _tags_equivalent(first, candidate):
+            continue
+        parent = candidate.parent
+        if parent is None:  # pragma: no cover — BS4 find_all results always have a parent
+            continue
+        siblings = _meaningful_children(parent)
+        idx = siblings.index(candidate)
+        window = siblings[idx : idx + len(roots)]
+        if len(window) == len(roots) and all(_tags_equivalent(n, s) for n, s in zip(roots, window, strict=True)):
+            return True
+    return False
 
 
 class AssertableHtml:
@@ -110,7 +200,9 @@ class AssertableHtml:
         return self
 
     def html_contains(self, fragment: str) -> Self:
-        SimpleTestCase().assertInHTML(fragment, str(self._tag))
+        assert _html_contains_fragment(self._tag, fragment), (
+            f"HTML fragment '{fragment}' not found in scope '{self._scope}'"
+        )
         return self
 
     def count(self, selector: str, expected: int) -> Self:
@@ -164,7 +256,7 @@ _DEPRECATED_SEE_IN_ORDER_MSG = (
 
 
 class HTMLContentAssertionsMixin:
-    _response: HttpResponse
+    _response: HttpResponseProtocol
     _cached_assertable_html: AssertableHtml | None = None
 
     @overload

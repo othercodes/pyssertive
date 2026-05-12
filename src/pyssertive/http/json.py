@@ -6,7 +6,7 @@ import urllib.request
 import warnings
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, overload
+from typing import Any, cast, overload
 
 import jsonschema
 
@@ -15,7 +15,7 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-from django.http import HttpResponse
+from pyssertive.protocol import HttpResponseProtocol
 
 
 def _resolve_schema(schema: dict[str, Any] | str | Path) -> dict[str, Any]:
@@ -26,13 +26,13 @@ def _resolve_schema(schema: dict[str, Any] | str | Path) -> dict[str, Any]:
 
     if raw.startswith(("http://", "https://")):
         with urllib.request.urlopen(raw) as resp:
-            return stdjson.loads(resp.read())
+            return cast(dict[str, Any], stdjson.loads(resp.read()))
 
     path = Path(raw)
     if not path.is_file():
         raise FileNotFoundError(f"Schema file not found: {path}")
     with path.open() as f:
-        return stdjson.load(f)
+        return cast(dict[str, Any], stdjson.load(f))
 
 
 class AssertableJson:
@@ -214,7 +214,7 @@ _DEPRECATED_IS_ARRAY_MSG = (
 
 
 class JsonContentAssertionsMixin:
-    _response: HttpResponse
+    _response: HttpResponseProtocol
     _cached_assertable_json: AssertableJson | None = None
 
     @overload
