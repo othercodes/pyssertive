@@ -96,15 +96,20 @@ jobs:
       - name: Install core dependencies (no Django)
         run: uv sync --no-default-groups --group test-core
 
-      - name: Verify Django is not installed
+      - name: Verify no adapter framework is installed
+        # The core job must run against a venv with zero adapter frameworks.
+        # Append new packages to `forbidden` as adapters are added (httpx, flask, ...).
         # --no-sync prevents uv from auto-resyncing to the project's default
-        # groups (which would pull pytest-django → Django) before checking.
+        # groups (which would pull adapter test deps and their frameworks).
         run: |
-          if uv run --no-sync python -c "import django" 2>/dev/null; then
-            echo "ERROR: Django should not be installed for the core job"
-            exit 1
-          fi
-          echo "OK: Django absent, core runs against pyssertive[core] only"
+          forbidden=(django)
+          for pkg in "${forbidden[@]}"; do
+            if uv run --no-sync python -c "import $pkg" 2>/dev/null; then
+              echo "ERROR: $pkg should not be installed for the core job"
+              exit 1
+            fi
+          done
+          echo "OK: no adapter framework installed — core runs against pyssertive[core] only"
 
       - name: Run core tests
         env:
