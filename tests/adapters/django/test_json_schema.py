@@ -38,52 +38,52 @@ VALID_SCHEMA: dict = {
 }
 
 
-def test_matches_schema_should_pass_when_data_conforms(doc: AssertableJson) -> None:
+def test_matches_schema_should_pass_when_data_conforms(doc: AssertableJson):
     doc.matches_schema(VALID_SCHEMA)
 
 
-def test_matches_schema_should_fail_when_required_field_missing() -> None:
+def test_matches_schema_should_fail_when_required_field_missing():
     data = {"tags": ["python"]}
     with pytest.raises(AssertionError, match="schema validation failed"):
         AssertableJson(data).matches_schema(VALID_SCHEMA)
 
 
-def test_matches_schema_should_fail_when_type_mismatches() -> None:
+def test_matches_schema_should_fail_when_type_mismatches():
     data = {**SAMPLE, "count": "not_an_int"}
     with pytest.raises(AssertionError, match="schema validation failed"):
         AssertableJson(data).matches_schema(VALID_SCHEMA)
 
 
-def test_matches_schema_should_report_failing_path() -> None:
+def test_matches_schema_should_report_failing_path():
     data = {**SAMPLE, "tags": "not_a_list"}
     with pytest.raises(AssertionError, match="'tags'"):
         AssertableJson(data).matches_schema(VALID_SCHEMA)
 
 
-def test_matches_schema_should_return_self_for_chaining(doc: AssertableJson) -> None:
+def test_matches_schema_should_return_self_for_chaining(doc: AssertableJson):
     assert doc.matches_schema(VALID_SCHEMA) is doc
 
 
-def test_matches_schema_should_pass_with_str_file_path(doc: AssertableJson) -> None:
+def test_matches_schema_should_pass_with_str_file_path(doc: AssertableJson):
     doc.matches_schema(str(SCHEMAS_DIR / "sample_nested.json"))
 
 
-def test_matches_schema_should_pass_with_path_object(doc: AssertableJson) -> None:
+def test_matches_schema_should_pass_with_path_object(doc: AssertableJson):
     doc.matches_schema(SCHEMAS_DIR / "sample_nested.json")
 
 
-def test_matches_schema_should_fail_when_file_not_found(doc: AssertableJson) -> None:
+def test_matches_schema_should_fail_when_file_not_found(doc: AssertableJson):
     with pytest.raises(FileNotFoundError, match="Schema file not found"):
         doc.matches_schema("nonexistent/schema.json")
 
 
-def test_matches_schema_should_fail_when_file_schema_mismatches() -> None:
+def test_matches_schema_should_fail_when_file_schema_mismatches():
     data = {"ok": "not_a_bool"}
     with pytest.raises(AssertionError, match="schema validation failed"):
         AssertableJson(data).matches_schema(SCHEMAS_DIR / "sample_ok.json")
 
 
-def test_matches_schema_should_pass_with_url_schema(doc: AssertableJson) -> None:
+def test_matches_schema_should_pass_with_url_schema(doc: AssertableJson):
     remote_schema = json.dumps(VALID_SCHEMA).encode()
     mock_response = MagicMock()
     mock_response.read.return_value = remote_schema
@@ -94,7 +94,7 @@ def test_matches_schema_should_pass_with_url_schema(doc: AssertableJson) -> None
     mock_urlopen.assert_called_once_with("https://api.example.com/schemas/sample.json")
 
 
-def test_matches_schema_should_fail_with_url_schema_when_data_invalid() -> None:
+def test_matches_schema_should_fail_with_url_schema_when_data_invalid():
     strict_schema = json.dumps(
         {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}
     ).encode()
@@ -109,7 +109,7 @@ def test_matches_schema_should_fail_with_url_schema_when_data_invalid() -> None:
         AssertableJson({"ok": True}).matches_schema("https://api.example.com/schemas/strict.json")
 
 
-def test_matches_schema_should_include_scope_in_error_message() -> None:
+def test_matches_schema_should_include_scope_in_error_message():
     user_schema = {
         "type": "object",
         "properties": {"id": {"type": "string"}},

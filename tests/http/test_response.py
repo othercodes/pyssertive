@@ -18,21 +18,21 @@ class _FakeResponse:
     extra: str = "framework-specific-attribute"
 
 
-def test_core_fluent_response_should_wrap_any_protocol_compatible_response() -> None:
+def test_core_fluent_response_should_wrap_any_protocol_compatible_response():
     fake = _FakeResponse(status_code=201, content=b'{"ok": true}', headers={"Content-Type": "application/json"})
     response = FluentResponse(fake)
 
     response.assert_created().assert_content_type("application/json").assert_json_path("ok", True)
 
 
-def test_core_fluent_response_should_expose_wrapped_response() -> None:
+def test_core_fluent_response_should_expose_wrapped_response():
     fake = _FakeResponse()
     response = FluentResponse(fake)
 
     assert response.wrapped is fake
 
 
-def test_core_fluent_response_should_proxy_protocol_properties() -> None:
+def test_core_fluent_response_should_proxy_protocol_properties():
     fake = _FakeResponse(status_code=418, content=b"teapot", charset="ascii")
     response = FluentResponse(fake)
 
@@ -43,14 +43,14 @@ def test_core_fluent_response_should_proxy_protocol_properties() -> None:
     assert response.cookies == {}
 
 
-def test_core_fluent_response_should_forward_unknown_attributes_to_wrapped_response() -> None:
+def test_core_fluent_response_should_forward_unknown_attributes_to_wrapped_response():
     fake = _FakeResponse()
     response = FluentResponse(fake)
 
     assert response.extra == "framework-specific-attribute"
 
 
-def test_core_fluent_response_should_raise_attribute_error_for_truly_unknown_attribute() -> None:
+def test_core_fluent_response_should_raise_attribute_error_for_truly_unknown_attribute():
     fake = _FakeResponse()
     response = FluentResponse(fake)
 
