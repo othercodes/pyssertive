@@ -97,8 +97,10 @@ jobs:
         run: uv sync --no-default-groups --group test-core
 
       - name: Verify Django is not installed
+        # --no-sync prevents uv from auto-resyncing to the project's default
+        # groups (which would pull pytest-django → Django) before checking.
         run: |
-          if uv run python -c "import django" 2>/dev/null; then
+          if uv run --no-sync python -c "import django" 2>/dev/null; then
             echo "ERROR: Django should not be installed for the core job"
             exit 1
           fi
@@ -108,7 +110,7 @@ jobs:
         env:
           COVERAGE_FILE: .coverage.core-py${{ matrix.python-version }}
         run: |
-          uv run pytest tests/test_protocol.py tests/http/ tests/arch/ \
+          uv run --no-sync pytest tests/test_protocol.py tests/http/ tests/arch/ \
             --cov-fail-under=0 --cov-report=
 
       - name: Upload coverage data
