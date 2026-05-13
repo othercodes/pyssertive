@@ -30,8 +30,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "beautifulsoup4>=4.12",
-    "grimp>=3.0",
+    "beautifulsoup4>=4.14.3",
+    "grimp>=3.14",
     "jsonschema>=4.26.0",
     "typing_extensions>=4.0; python_version < '3.11'",
 ]
@@ -60,19 +60,19 @@ packages = ["src/pyssertive"]
 
 [dependency-groups]
 test-core = [
-    "pytest>=8.0.0",
-    "pytest-cov>=6.0.0",
-    "types-jsonschema>=4.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "types-jsonschema>=4.26.0.20260508",
 ]
 test-django = [
     {include-group = "test-core"},
-    "pytest-django>=4.8.0",
-    "django-stubs>=5.0.0",
+    "pytest-django>=4.12.0",
+    "django>=5.2.14",
 ]
 dev = [
     {include-group = "test-django"},
-    "ruff>=0.15.9",
-    "mypy>=1.0.0",
+    "ruff>=0.15.12",
+    "mypy>=2.1.0",
 ]
 
 [tool.ruff]
