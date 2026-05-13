@@ -68,7 +68,7 @@ test-core = [
 test-django = [
     {include-group = "test-core"},
     "pytest-django>=4.8.0",
-    "django-stubs>=5.0.0",
+    "django-stubs>=6.0.4",
 ]
 test-httpx = [
     {include-group = "test-core"},
