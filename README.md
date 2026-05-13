@@ -18,18 +18,21 @@ Fluent, chainable assertions for Python tests — HTTP, architecture, and databa
 - Header assertions
 - Streaming response and file download assertions
 - Architecture assertions for import boundaries, layers, and bounded-context isolation
+- MCP (Model Context Protocol) assertions with MCP-native vocabulary
 - Debug helpers for test development
 
 ## Requirements
 
 - Python 3.10+
 - Django 4.2, 5.2, or 6.0 (optional, only if using the Django adapter)
+- httpx 0.27+ (optional, only if using the httpx adapter for FastAPI/Starlette/FastMCP)
 
 ## Installation
 
 ```bash
 pip install pyssertive            # core
 pip install pyssertive[django]    # with Django adapter
+pip install pyssertive[httpx]     # with httpx adapter (FastAPI, Starlette, FastMCP)
 ```
 
 ## Usage
@@ -122,8 +125,6 @@ scoped.where("name", "Alice").where_type("id", int)
 ```
 
 > **Breaking change:** `assert_json()` now returns an `AssertableJson` instead of `Self`. Code that chains `.assert_json()` in the middle of a response chain (e.g. `response.assert_json().assert_json_path(...)`) should drop the `.assert_json()` call — it was always redundant since each `assert_json_*` method validates internally.
-
-> **Deprecation note:** `assert_json_is_object` and `assert_json_is_array` are deprecated in favor of `assert_json_is_dict` and `assert_json_is_list`. They still work and emit a `DeprecationWarning`.
 
 ### JSON Schema Validation
 
@@ -253,8 +254,6 @@ For ad-hoc use, `assert_html()` without a callback returns the `AssertableHtml` 
 table = response.assert_html("table#active-users")
 table.count("tbody tr", 3).see_text("Alice")
 ```
-
-> **Deprecation note:** `assert_see`, `assert_dont_see`, and `assert_see_in_order` are deprecated in favor of the explicit `_html` / `_text` pairs. They still work and emit a `DeprecationWarning` pointing at both replacements.
 
 ### Session and Cookie Assertions
 
@@ -432,3 +431,138 @@ AssertionError: shared should not depend on:
 ```
 
 Typo-style mistakes raise `ValueError` with a `Did you mean ...?` hint instead of a chain check.
+
+### MCP Assertions
+
+The MCP module speaks **MCP, not JSON-RPC**. Tests read as the protocol does — `called the tool, it succeeded, it returned text` — never as wire-level shape checks. Works against any response object exposing `.content` and `.headers` (httpx, Django, raw `dict`), and unwraps `text/event-stream` (Streamable HTTP transport) automatically.
+
+```python
+from pyssertive.adapters.httpx import FluentHttpAssertClient, HttpxRequestBuilder
+from pyssertive.http.mcp import MessageBuilder
+from starlette.testclient import TestClient
+from fastmcp import FastMCP
+
+app = FastMCP("weather").http_app()
+client = FluentHttpAssertClient(TestClient(app))
+
+# Initialize handshake
+init = MessageBuilder(HttpxRequestBuilder()).initialize().build()
+client.post("/mcp", content=init.content, headers=dict(init.headers))\
+    .assert_ok()\
+    .assert_mcp(lambda m: m
+        .negotiated_protocol("2025-11-25")
+        .server_named("weather")
+        .supports_tools()
+    )
+
+# Tool call — success
+call = MessageBuilder(HttpxRequestBuilder())\
+    .calling_tool("get_weather", arguments={"location": "Madrid"})\
+    .build()
+client.post("/mcp", content=call.content, headers=dict(call.headers))\
+    .assert_ok().assert_mcp(lambda m: m
+        .tool("get_weather")
+        .succeeds()
+        .returns_text_containing("°C")
+    )
+
+# Tool call — tool-level error (HTTP 200, isError=true)
+response.assert_mcp(lambda m: (
+    m.tool("get_weather")
+     .reports_tool_error()
+     .with_message_containing("Invalid date")
+))
+
+# Tool call — protocol error (-32602, -32601, ...)
+response.assert_mcp(lambda m: (
+    m.tool("unknown")
+     .is_rejected_as_unknown_tool()
+))
+```
+
+Stand-alone (no HTTP wrapper) is also supported:
+
+```python
+from pyssertive.protocols.mcp import AssertableMCP
+
+AssertableMCP(payload).lists_tools()\
+    .with_count(3)\
+    .contains_tool("get_weather", lambda t: (
+        t.documented().accepts(["location"]).accepts_optional(["units"])
+    ))
+```
+
+#### Building requests with `MessageBuilder`
+
+`MessageBuilder` constructs MCP JSON-RPC messages with native MCP vocabulary on top of any transport-level `RequestBuilder`. Inject `HttpxRequestBuilder` for FastAPI/Starlette/FastMCP testing, or `DjangoRequestBuilder` for Django-hosted MCP servers — the output of `.build()` matches whichever you inject.
+
+```python
+from pyssertive.http.mcp import MessageBuilder
+from pyssertive.adapters.httpx import HttpxRequestBuilder
+
+# Handshake — returns httpx.Request
+MessageBuilder(HttpxRequestBuilder()).initialize(protocol="2025-11-25").build()
+
+# Tool list / tool call
+MessageBuilder(HttpxRequestBuilder()).listing_tools(cursor="abc").build()
+MessageBuilder(HttpxRequestBuilder()).calling_tool("get_weather", arguments={"location": "Madrid"}).build()
+
+# Resources / prompts
+MessageBuilder(HttpxRequestBuilder()).reading_resource("file:///main.py").build()
+MessageBuilder(HttpxRequestBuilder()).getting_prompt("code_review", arguments={"lang": "python"}).build()
+
+# Notifications (no id field, no params if not provided)
+MessageBuilder(HttpxRequestBuilder()).notifying("notifications/initialized").build()
+
+# Low-level escape hatch
+MessageBuilder(HttpxRequestBuilder()).calling("logging/setLevel").with_params({"level": "debug"}).build()
+
+# Auth / protocol / session headers
+MessageBuilder(HttpxRequestBuilder())\
+    .with_auth_token("abc123")\
+    .with_protocol_version("2025-11-25")\
+    .with_session_id("sess-xyz")\
+    .calling_tool("ping")\
+    .build()
+
+# Explicit id, custom MCP path
+MessageBuilder(HttpxRequestBuilder(), path="/v1/mcp")\
+    .calling_tool("ping").with_id("req-uuid").build()
+```
+
+Pair it naturally with `assert_mcp` for symmetric request/response code:
+
+```python
+import httpx
+
+client = httpx.Client(base_url="http://testserver", transport=...)
+request = MessageBuilder(HttpxRequestBuilder()).calling_tool("get_weather").build()
+response = client.send(request)
+
+# Or send via the builder directly
+response = MessageBuilder(HttpxRequestBuilder()).calling_tool("get_weather").build()
+```
+
+#### Builder layers
+
+Builders form a transport-agnostic stack:
+
+```
+pyssertive.http.request.RequestBuilder    (agnostic base — method/path/headers/body/query/cookies)
+  ├── pyssertive.adapters.django.DjangoRequestBuilder    → produces HttpRequest (RequestFactory)
+  └── pyssertive.adapters.httpx.HttpxRequestBuilder       → produces httpx.Request (.send() also dispatches)
+
+pyssertive.http.mcp.MessageBuilder         (composes any RequestBuilder — adds MCP JSON-RPC layer)
+```
+
+Each layer speaks its dominio: the base builder knows HTTP transport, the adapter subclasses know their framework, the MCP message builder knows JSON-RPC. New frameworks (Flask, requests, …) only require a new `RequestBuilder` subclass — MCP comes along for free.
+
+Content-block scoping for richer tool responses:
+
+```python
+response.assert_mcp(lambda m: m.tool("render")
+    .succeeds()
+    .content(0, lambda c: c.is_text().text_equals("ok"))
+    .content(1, lambda c: c.is_image().with_mime_type("image/png").with_base64_data())
+)
+```

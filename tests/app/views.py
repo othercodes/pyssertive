@@ -1,5 +1,5 @@
 from django import forms
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 
@@ -240,9 +240,7 @@ def cookie_detailed_view(request: HttpRequest) -> HttpResponse:
     return response
 
 
-def streaming_csv_view(request: HttpRequest) -> HttpResponse:
-    from django.http import StreamingHttpResponse
-
+def streaming_csv_view(request: HttpRequest) -> StreamingHttpResponse:
     def generate_csv():
         yield "Name,Email,Age\r\n"
         yield "John,john@example.com,30\r\n"
@@ -254,9 +252,7 @@ def streaming_csv_view(request: HttpRequest) -> HttpResponse:
     return response
 
 
-def streaming_text_view(request: HttpRequest) -> HttpResponse:
-    from django.http import StreamingHttpResponse
-
+def streaming_text_view(request: HttpRequest) -> StreamingHttpResponse:
     def generate_text():
         yield "Line 1\n"
         yield "Line 2\n"
@@ -265,9 +261,7 @@ def streaming_text_view(request: HttpRequest) -> HttpResponse:
     return StreamingHttpResponse(generate_text(), content_type="text/plain")
 
 
-def streaming_empty_view(request: HttpRequest) -> HttpResponse:
-    from django.http import StreamingHttpResponse
-
+def streaming_empty_view(request: HttpRequest) -> StreamingHttpResponse:
     def generate_empty():
         yield ""
 

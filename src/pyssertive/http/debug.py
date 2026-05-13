@@ -4,48 +4,50 @@ import json
 import pprint
 import sys
 from json import JSONDecodeError
+from typing import Any
 
 if sys.version_info >= (3, 11):  # pragma: no cover
     from typing import Self
 else:  # pragma: no cover
     from typing_extensions import Self
 
-from pyssertive.protocol import HttpResponseProtocol
-
 
 class DebugResponseMixin:
-    _response: HttpResponseProtocol
+    status_code: int
+    headers: Any
+    content: bytes
+    cookies: Any
 
     def dump(self, content_format: str | None = None) -> Self:
-        content_type = content_format or self._response.headers.get("Content-Type", "")
+        content_type = content_format or self.headers.get("Content-Type", "")
 
         print("\n[Response Dump - format:", content_type, "]")
-        print("[Status]", self._response.status_code)
-        print("[Headers]", dict(self._response.headers))
+        print("[Status]", self.status_code)
+        print("[Headers]", dict(self.headers))
 
         match content_type:
             case "application/json":
                 try:
-                    pprint.pprint(json.loads(self._response.content))
+                    pprint.pprint(json.loads(self.content))
                 except JSONDecodeError:
-                    print("[Invalid JSON]", self._response.content.decode(errors="replace"))
+                    print("[Invalid JSON]", self.content.decode(errors="replace"))
             case "text/plain":
-                print(self._response.content.decode(errors="replace"))
+                print(self.content.decode(errors="replace"))
             case _:
-                print(repr(self._response.content))
+                print(repr(self.content))
 
         return self
 
     def dump_headers(self) -> Self:
         print("\n[Response Headers]")
-        for key, value in self._response.headers.items():
+        for key, value in self.headers.items():
             print(f"  {key}: {value}")
         return self
 
     def dump_json(self) -> Self:
         print("\n[Response JSON]")
         try:
-            data = json.loads(self._response.content)
+            data = json.loads(self.content)
             print(json.dumps(data, indent=2, default=str))
         except JSONDecodeError:
             raise AssertionError("Response content is not valid JSON") from None
@@ -53,7 +55,7 @@ class DebugResponseMixin:
 
     def dump_cookies(self) -> Self:
         print("\n[Response Cookies]")
-        cookies = self._response.cookies
+        cookies = self.cookies
         if cookies:
             for name, cookie in cookies.items():
                 print(f"  {name}: {cookie.value}")
