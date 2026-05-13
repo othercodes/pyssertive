@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pyssertive.http.json import AssertableJson
+from pyssertive.formats.json import AssertableJson
+
+SCHEMAS_DIR = Path(__file__).resolve().parents[1] / "schemas"
 
 SAMPLE = {
     "user": {
@@ -314,3 +319,104 @@ def test_structure_should_return_self_for_method_chaining(doc: AssertableJson):
 
 def test_missing_fragment_should_return_self_for_method_chaining(doc: AssertableJson):
     assert doc.missing_fragment({"x": 1}) is doc
+
+
+def test_constructor_should_parse_string_payload_as_json():
+    AssertableJson('{"ok": true}').where("ok", True)
+
+
+def test_constructor_should_parse_bytes_payload_as_json():
+    AssertableJson(b'{"ok": true}').where("ok", True)
+
+
+VALID_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "user": {"type": "object"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "count": {"type": "integer"},
+    },
+    "required": ["user", "tags", "count"],
+}
+
+
+def test_matches_schema_should_pass_when_data_conforms(doc: AssertableJson):
+    doc.matches_schema(VALID_SCHEMA)
+
+
+def test_matches_schema_should_raise_when_required_field_missing():
+    data = {"tags": ["python"]}
+    with pytest.raises(AssertionError, match="schema validation failed"):
+        AssertableJson(data).matches_schema(VALID_SCHEMA)
+
+
+def test_matches_schema_should_raise_when_type_mismatches():
+    data = {**SAMPLE, "count": "not_an_int"}
+    with pytest.raises(AssertionError, match="schema validation failed"):
+        AssertableJson(data).matches_schema(VALID_SCHEMA)
+
+
+def test_matches_schema_should_report_failing_path():
+    data = {**SAMPLE, "tags": "not_a_list"}
+    with pytest.raises(AssertionError, match="'tags'"):
+        AssertableJson(data).matches_schema(VALID_SCHEMA)
+
+
+def test_matches_schema_should_return_self_for_method_chaining(doc: AssertableJson):
+    assert doc.matches_schema(VALID_SCHEMA) is doc
+
+
+def test_matches_schema_should_pass_with_str_file_path(doc: AssertableJson):
+    doc.matches_schema(str(SCHEMAS_DIR / "sample_nested.json"))
+
+
+def test_matches_schema_should_pass_with_path_object(doc: AssertableJson):
+    doc.matches_schema(SCHEMAS_DIR / "sample_nested.json")
+
+
+def test_matches_schema_should_raise_when_file_not_found(doc: AssertableJson):
+    with pytest.raises(FileNotFoundError, match="Schema file not found"):
+        doc.matches_schema("nonexistent/schema.json")
+
+
+def test_matches_schema_should_raise_when_file_schema_mismatches():
+    data = {"ok": "not_a_bool"}
+    with pytest.raises(AssertionError, match="schema validation failed"):
+        AssertableJson(data).matches_schema(SCHEMAS_DIR / "sample_ok.json")
+
+
+def test_matches_schema_should_pass_with_url_schema(doc: AssertableJson):
+    remote_schema = json.dumps(VALID_SCHEMA).encode()
+    mock_response = MagicMock()
+    mock_response.read.return_value = remote_schema
+    mock_response.__enter__ = lambda s: s
+    mock_response.__exit__ = MagicMock(return_value=False)
+    with patch("pyssertive.formats.json.urllib.request.urlopen", return_value=mock_response) as mock_urlopen:
+        doc.matches_schema("https://api.example.com/schemas/sample.json")
+    mock_urlopen.assert_called_once_with("https://api.example.com/schemas/sample.json")
+
+
+def test_matches_schema_should_raise_with_url_schema_when_data_invalid():
+    strict_schema = json.dumps(
+        {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}
+    ).encode()
+    mock_response = MagicMock()
+    mock_response.read.return_value = strict_schema
+    mock_response.__enter__ = lambda s: s
+    mock_response.__exit__ = MagicMock(return_value=False)
+    with (
+        patch("pyssertive.formats.json.urllib.request.urlopen", return_value=mock_response),
+        pytest.raises(AssertionError, match="schema validation failed"),
+    ):
+        AssertableJson({"ok": True}).matches_schema("https://api.example.com/schemas/strict.json")
+
+
+def test_matches_schema_should_include_scope_in_error_message():
+    user_schema = {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"],
+    }
+    scoped = AssertableJson(SAMPLE["user"], _path="user")
+    with pytest.raises(AssertionError, match="at scope 'user'"):
+        scoped.matches_schema(user_schema)

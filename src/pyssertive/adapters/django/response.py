@@ -20,17 +20,6 @@ class FluentResponse(
     FormValidationAssertionsMixin,
     _BaseFluentResponse,
 ):
-    """Fluent assertion wrapper for Django HTTP responses.
-
-    Adds Django-specific assertion families (templates, forms, sessions,
-    streaming responses) on top of the framework-agnostic core.
-
-    Example::
-
-        response = client.get("/api/users/")
-        FluentResponse(response).assert_ok().assert_json_path("count", 10)
-    """
-
     def __init__(self, response: HttpResponse) -> None:
         self._response: HttpResponse = response
 

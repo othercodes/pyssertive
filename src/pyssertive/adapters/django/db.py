@@ -1,5 +1,3 @@
-"""Database assertion utilities for Django models."""
-
 from collections.abc import Callable, Collection, Generator, Iterator
 from contextlib import contextmanager
 from typing import Any

@@ -1,108 +1,54 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from django.http import HttpRequest
 from django.test import RequestFactory
 
+from pyssertive.http.request import BaseRequestBuilder
+
+if sys.version_info >= (3, 11):  # pragma: no cover
+    from typing import Self
+else:  # pragma: no cover
+    from typing_extensions import Self
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
 
 
-class RequestBuilder:
-    """
-    Fluent builder for creating HttpRequest objects using Django's RequestFactory.
-
-    Useful for unit testing views directly without going through the full
-    HTTP request/response cycle (bypasses middleware and URL routing).
-
-    Example::
-
-        from pyssertive.adapters.django import RequestBuilder
-
-        request = (
-            RequestBuilder()
-            .with_method("POST")
-            .with_path("/api/users/")
-            .with_body({"name": "John"})
-            .with_user(user)
-            .with_cookie("session", "abc123")
-            .with_meta("HTTP_X_FORWARDED_FOR", "192.168.1.1")
-            .build()
-        )
-        response = my_view(request)
-    """
-
+class DjangoRequestBuilder(BaseRequestBuilder[HttpRequest]):
     def __init__(
         self,
         rf: RequestFactory | None = None,
         method: str = "GET",
+        base_url: str | None = None,
         path: str = "/",
         data: dict[str, Any] | None = None,
     ) -> None:
+        super().__init__(method=method, base_url=base_url, path=path, data=data)
         self.rf = rf or RequestFactory()
-        self.method = method.upper()
-        self.path = path
-        self.data = data or {}
-        self.user: AbstractBaseUser | None = None
-        self.cookies: dict[str, str] = {}
-        self.meta: dict[str, Any] = {}
-        self.headers: dict[str, str] = {}
-        self.custom_properties: dict[str, Any] = {}
+        self._user: AbstractBaseUser | None = None
+        self._meta: dict[str, Any] = {}
+        self._custom_properties: dict[str, Any] = {}
 
-    def with_method(self, method: str) -> RequestBuilder:
-        self.method = method.upper()
+    def with_user(self, user: AbstractBaseUser) -> Self:
+        self._user = user
         return self
 
-    def with_path(self, path: str) -> RequestBuilder:
-        self.path = path
+    def with_meta(self, key: str, value: Any) -> Self:
+        self._meta[key] = str(value)
         return self
 
-    def with_data(self, data: dict[str, Any]) -> RequestBuilder:
-        self.data = data
-        return self
-
-    def with_body(self, data: dict[str, Any]) -> RequestBuilder:
-        if self.method not in ["POST", "PUT", "PATCH"]:
-            raise ValueError(f"Cannot set body on {self.method} request")
-        self.data = data
-        return self
-
-    def with_query_string(self, params: dict[str, Any]) -> RequestBuilder:
-        self.data = params
-        return self
-
-    def with_user(self, user: AbstractBaseUser) -> RequestBuilder:
-        self.user = user
-        return self
-
-    def with_cookie(self, key: str, value: Any) -> RequestBuilder:
-        self.cookies[key] = str(value)
-        return self
-
-    def with_cookies(self, cookies: dict[str, Any]) -> RequestBuilder:
-        for key, value in cookies.items():
-            self.cookies[key] = str(value)
-        return self
-
-    def with_meta(self, key: str, value: Any) -> RequestBuilder:
-        self.meta[key] = str(value)
-        return self
-
-    def with_header(self, key: str, value: str) -> RequestBuilder:
-        self.headers[key] = value
-        return self
-
-    def with_headers(self, headers: dict[str, str]) -> RequestBuilder:
-        self.headers.update(headers)
-        return self
-
-    def with_property(self, name: str, value: Any) -> RequestBuilder:
-        self.custom_properties[name] = value
+    def with_property(self, name: str, value: Any) -> Self:
+        self._custom_properties[name] = value
         return self
 
     def build(self) -> HttpRequest:
+        import json
+        from urllib.parse import urlencode
+
         method_map: dict[str, Callable[..., HttpRequest]] = {
             "GET": self.rf.get,
             "POST": self.rf.post,
@@ -112,22 +58,30 @@ class RequestBuilder:
             "HEAD": self.rf.head,
             "OPTIONS": self.rf.options,
         }
+        if self._method not in method_map:
+            raise ValueError(f"Unsupported HTTP method: {self._method}")
 
-        if self.method not in method_map:
-            raise ValueError(f"Unsupported HTTP method: {self.method}")
+        path = self._path
+        if self._query:
+            qs = urlencode(self._query, doseq=True)
+            path = f"{path}{'&' if '?' in path else '?'}{qs}"
 
-        request: HttpRequest = method_map[self.method](self.path, self.data, headers=self.headers)
+        content_type = self._headers.get("Content-Type") or self._headers.get("content-type")
+        body: Any = self._body if self._body is not None else {}
+        rf_call = method_map[self._method]
+        if content_type and "application/json" in content_type and isinstance(body, dict):
+            body = json.dumps(body).encode("utf-8")
+            request: HttpRequest = rf_call(path, body, content_type=content_type, headers=self._headers)
+        else:
+            request = rf_call(path, body, headers=self._headers)
 
-        if self.user:
-            request.user = self.user  # type: ignore[assignment]
-
-        for key, value in self.cookies.items():
+        if self._user:
+            request.user = self._user  # type: ignore[assignment]
+        for key, value in self._cookies.items():
             request.COOKIES[key] = value
-
-        for key, value in self.meta.items():
+        for key, value in self._meta.items():
             request.META[key] = value
-
-        for key, value in self.custom_properties.items():
+        for key, value in self._custom_properties.items():
             setattr(request, key, value)
 
         return request
