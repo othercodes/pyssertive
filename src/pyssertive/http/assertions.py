@@ -10,7 +10,6 @@ else:  # pragma: no cover
     from typing_extensions import Self
 
 
-
 class HttpStatusAssertionsMixin:
     status_code: int
     headers: Any
@@ -98,9 +97,7 @@ class HttpStatusAssertionsMixin:
         return self
 
     def assert_internal_server_error(self) -> Self:
-        assert self.status_code == 500, (
-            f"Expected 500 Internal Server Error, got {self.status_code}"
-        )
+        assert self.status_code == 500, f"Expected 500 Internal Server Error, got {self.status_code}"
         return self
 
     def assert_service_unavailable(self) -> Self:
@@ -116,9 +113,7 @@ class HttpStatusAssertionsMixin:
         return self
 
     def assert_status(self, status_code: int) -> Self:
-        assert self.status_code == status_code, (
-            f"Expected status {status_code}, got {self.status_code}"
-        )
+        assert self.status_code == status_code, f"Expected status {status_code}, got {self.status_code}"
         return self
 
 

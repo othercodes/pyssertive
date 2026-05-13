@@ -10,6 +10,7 @@ from pyssertive.formats.html import AssertableHtml
 def test_constructor_should_decode_bytes_markup_as_utf8():
     AssertableHtml(b"<h1>Hello</h1>").see_text("Hello")
 
+
 SAMPLE = """<!DOCTYPE html>
 <html>
 <head><title>Sample</title></head>

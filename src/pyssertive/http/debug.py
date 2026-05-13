@@ -12,7 +12,6 @@ else:  # pragma: no cover
     from typing_extensions import Self
 
 
-
 class DebugResponseMixin:
     status_code: int
     headers: Any
