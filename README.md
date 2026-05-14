@@ -495,7 +495,9 @@ AssertableMCP(payload).lists_tools()\
 Catalog-wide invariants — apply the same assertion to every tool without enumerating names. Useful when a server rewrites its tool schema per caller (auth scopes, feature flags):
 
 ```python
-AssertableMCP(payload).lists_tools().every_tool(lambda t: t.documented())
+AssertableMCP(payload).lists_tools().every_tool(
+    lambda t: t.does_not_accept(["internal_user_id"])
+)
 ```
 
 #### Building requests with `MessageBuilder`
