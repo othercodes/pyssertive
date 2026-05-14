@@ -492,6 +492,12 @@ AssertableMCP(payload).lists_tools()\
     ))
 ```
 
+Catalog-wide invariants — apply the same assertion to every tool without enumerating names. Useful when a server rewrites its tool schema per caller (auth scopes, feature flags):
+
+```python
+AssertableMCP(payload).lists_tools().every_tool(lambda t: t.documented())
+```
+
 #### Building requests with `MessageBuilder`
 
 `MessageBuilder` constructs MCP JSON-RPC messages with native MCP vocabulary on top of any transport-level `RequestBuilder`. Inject `HttpxRequestBuilder` for FastAPI/Starlette/FastMCP testing, or `DjangoRequestBuilder` for Django-hosted MCP servers — the output of `.build()` matches whichever you inject.

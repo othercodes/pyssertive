@@ -79,6 +79,11 @@ class AssertableToolList:
             raise AssertionError(f"Tool '{name}' should not be in tools list, but it was found")
         return self
 
+    def every_tool(self, callback: Callable[[AssertableToolDef], Any]) -> Self:
+        for tool in self._tools:
+            callback(AssertableToolDef(tool))
+        return self
+
     def has_more_pages(self) -> Self:
         if not self._result.get("nextCursor"):
             raise AssertionError("Expected tools/list response to advertise a nextCursor")

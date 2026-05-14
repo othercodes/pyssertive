@@ -103,3 +103,30 @@ def test_lists_tools_has_more_pages_should_pass_when_next_cursor_present():
 def test_lists_tools_has_more_pages_should_raise_when_next_cursor_absent():
     with pytest.raises(AssertionError, match="nextCursor"):
         AssertableMCP(_list_response([{"name": "a"}])).lists_tools().has_more_pages()
+
+
+def test_every_tool_should_apply_callback_to_each_tool():
+    payload = _list_response([{"name": "a"}, {"name": "b"}, {"name": "c"}])
+    call_count = []
+    AssertableMCP(payload).lists_tools().every_tool(lambda t: call_count.append(1))
+    assert len(call_count) == 3
+
+
+def test_every_tool_should_raise_with_tool_name_when_callback_fails():
+    payload = _list_response(
+        [
+            {"name": "a", "description": "doc a"},
+            {"name": "b"},
+        ]
+    )
+    with pytest.raises(AssertionError, match="Tool 'b' has no description"):
+        AssertableMCP(payload).lists_tools().every_tool(lambda t: t.documented())
+
+
+def test_every_tool_should_pass_silently_when_tools_list_is_empty():
+    AssertableMCP(_list_response([])).lists_tools().every_tool(lambda t: t.documented())
+
+
+def test_every_tool_should_return_self_for_chaining():
+    payload = _list_response([{"name": "a", "description": "doc a"}])
+    AssertableMCP(payload).lists_tools().every_tool(lambda t: t.documented()).with_count(1)
