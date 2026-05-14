@@ -41,6 +41,15 @@ class AssertableToolDef:
             raise AssertionError(f"Tool '{self._name}' has no input properties {missing!r}; properties={properties!r}")
         return self
 
+    def does_not_accept(self, params: list[str]) -> Self:
+        properties = list((self._definition.get("inputSchema") or {}).get("properties") or {})
+        present = [p for p in params if p in properties]
+        if present:
+            raise AssertionError(
+                f"Tool '{self._name}' should not expose properties {present!r}; properties={properties!r}"
+            )
+        return self
+
     def has_output_schema(self) -> Self:
         if not self._definition.get("outputSchema"):
             raise AssertionError(f"Tool '{self._name}' has no outputSchema")
@@ -77,6 +86,12 @@ class AssertableToolList:
     def does_not_contain_tool(self, name: str) -> Self:
         if any(isinstance(t, dict) and t.get("name") == name for t in self._tools):
             raise AssertionError(f"Tool '{name}' should not be in tools list, but it was found")
+        return self
+
+    def every_tool(self, callback: Callable[[AssertableToolDef], Any]) -> Self:
+        for tool in self._tools:
+            if isinstance(tool, dict):
+                callback(AssertableToolDef(tool))
         return self
 
     def has_more_pages(self) -> Self:
