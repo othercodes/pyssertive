@@ -3,11 +3,30 @@
 [![Build Status](https://github.com/othercodes/pyssertive/actions/workflows/test.yml/badge.svg)](https://github.com/othercodes/pyssertive/actions/workflows/test.yml)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=othercodes_pyssertive&metric=coverage)](https://sonarcloud.io/summary/new_code?id=othercodes_pyssertive)
 
-Fluent, chainable assertions for Python tests — HTTP, architecture, and database. Inspired by Laravel's elegant testing API.
+Fluent, chainable assertions for everything you test in Python. One vocabulary — from a single value to HTTP responses, JSON, HTML, MCP, and architecture. Inspired by Laravel's elegant testing API.
+
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Expectations](#expectations)
+  - [HTTP Status Assertions](#http-status-assertions)
+  - [JSON Assertions](#json-assertions)
+  - [JSON Schema Validation](#json-schema-validation)
+  - [HTML Assertions](#html-assertions)
+  - [Session and Cookie Assertions](#session-and-cookie-assertions)
+  - [Template Assertions](#template-assertions)
+  - [Streaming and Download Assertions](#streaming-and-download-assertions)
+  - [Debug Helpers](#debug-helpers)
+  - [Database Assertions](#database-assertions)
+  - [Architecture Assertions](#architecture-assertions)
+  - [MCP Assertions](#mcp-assertions)
 
 ## Features
 
-- Fluent, chainable API for readable test assertions
+- One fluent vocabulary for any value, response, or contract under test
 - HTTP status code assertions (2xx, 3xx, 4xx, 5xx)
 - JSON response validation with path navigation
 - JSON Schema contract testing
@@ -37,7 +56,91 @@ pip install pyssertive[httpx]     # with httpx adapter (FastAPI, Starlette, Fast
 
 ## Usage
 
-### Basic Example
+### Expectations
+
+Pyssertive's foundation is a single fluent vocabulary that speaks to any value
+you put under test — a domain object, a primitive, a collection. Every other
+assertable in this library (HTTP responses, JSON, HTML, MCP, architecture)
+extends this same idiom.
+
+```python
+from pyssertive import expect
+
+expect(42).equals(42)
+expect("alice@example.com").is_instance_of(str).matches(r".+@.+")
+expect([1, 2, 3]).has_count(3).contains(2).does_not_contain(99)
+expect({"name": "alice", "age": 30}).has_keys("name", "age")
+```
+
+#### Domain example
+
+```python
+def test_signup_should_create_active_user():
+    user = signup_service.register(email="alice@x.com")
+
+    expect(user).is_instance_of(User)
+    expect(user.id).is_not_none()
+    expect(user.email).equals("alice@x.com")
+    expect(user.permissions).contains("read").does_not_contain("admin")
+    expect(user.is_active).is_true()
+```
+
+#### Higher-order: `each` and `sequence`
+
+Apply matchers to every element of an iterable, or match positionally with
+optional predicates:
+
+```python
+expect([2, 4, 6]).each().is_greater_than(0).is_instance_of(int)
+
+expect(orders).sequence(
+    lambda o: o.has_attribute("status", "paid"),
+    lambda o: o.has_attribute("status", "shipped"),
+    lambda o: o.has_attribute("status", "delivered"),
+)
+```
+
+#### Custom expectations
+
+Subclass `AssertableValue` to add domain-specific matchers — fully typed,
+autocompleted by your IDE, checked by mypy:
+
+```python
+from pyssertive import AssertableValue
+
+class UserExpectation(AssertableValue):
+    def is_admin(self):
+        assert "admin" in self._value.permissions, "Expected user to be admin"
+        return self
+
+    def is_verified(self):
+        assert self._value.verified_at is not None, "Expected user to be verified"
+        return self
+
+def expect_user(u): return UserExpectation(u)
+
+expect_user(user).is_admin().is_verified().has_attribute("email")
+```
+
+#### Matchers reference
+
+| Category     | Matchers                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| Equality     | `equals`, `does_not_equal`, `is_same_as`, `is_not_same_as`, `is_none`, `is_not_none`           |
+| Truthiness   | `is_truthy`, `is_falsy`, `is_true`, `is_false`                                                 |
+| Types        | `is_instance_of`, `is_not_instance_of`, `is_type`                                              |
+| Comparison   | `is_greater_than`, `is_less_than`, `is_at_least`, `is_at_most`, `is_between`                   |
+| Collections  | `has_count`, `is_empty`, `is_not_empty`, `contains`, `does_not_contain`                        |
+| Dict/object  | `has_key`, `does_not_have_key`, `has_keys`, `has_attribute`, `does_not_have_attribute`         |
+| Strings      | `matches`, `does_not_match`, `starts_with`, `ends_with`                                        |
+| Higher-order | `each`, `sequence`                                                                             |
+
+The sections below show how the same vocabulary specializes for HTTP, JSON,
+HTML, MCP, and architectural concerns.
+
+### HTTP Status Assertions
+
+A complete end-to-end test wires up a `FluentHttpAssertClient` and chains assertions on the response:
 
 ```python
 import pytest
@@ -51,13 +154,13 @@ def client():
 @pytest.mark.django_db
 def test_user_api(client):
     response = client.get("/api/users/")
-    
+
     response.assert_ok()\
         .assert_json_path("count", 10)\
         .assert_header("Content-Type", "application/json")
 ```
 
-### HTTP Status Assertions
+Status-specific shortcuts:
 
 ```python
 response.assert_ok()              # 2xx
@@ -123,8 +226,6 @@ root.has("data").where_type("data.users", list)
 scoped = response.assert_json("data.users.0")
 scoped.where("name", "Alice").where_type("id", int)
 ```
-
-> **Breaking change:** `assert_json()` now returns an `AssertableJson` instead of `Self`. Code that chains `.assert_json()` in the middle of a response chain (e.g. `response.assert_json().assert_json_path(...)`) should drop the `.assert_json()` call — it was always redundant since each `assert_json_*` method validates internally.
 
 ### JSON Schema Validation
 
@@ -299,6 +400,8 @@ response.dd()             # Dump and die (raises exception)
 
 ### Database Assertions
 
+> Requires the Django adapter (`pip install pyssertive[django]`).
+
 ```python
 from pyssertive.adapters.django.db import (
     assert_model_exists,
@@ -436,6 +539,8 @@ Typo-style mistakes raise `ValueError` with a `Did you mean ...?` hint instead o
 
 The MCP module speaks **MCP, not JSON-RPC**. Tests read as the protocol does — `called the tool, it succeeded, it returned text` — never as wire-level shape checks. Works against any response object exposing `.content` and `.headers` (httpx, Django, raw `dict`), and unwraps `text/event-stream` (Streamable HTTP transport) automatically.
 
+#### Initialize handshake
+
 ```python
 from pyssertive.adapters.httpx import FluentHttpAssertClient, HttpxRequestBuilder
 from pyssertive.http.mcp import MessageBuilder
@@ -445,7 +550,6 @@ from fastmcp import FastMCP
 app = FastMCP("weather").http_app()
 client = FluentHttpAssertClient(TestClient(app))
 
-# Initialize handshake
 init = MessageBuilder(HttpxRequestBuilder()).initialize().build()
 client.post("/mcp", content=init.content, headers=dict(init.headers))\
     .assert_ok()\
@@ -454,8 +558,11 @@ client.post("/mcp", content=init.content, headers=dict(init.headers))\
         .server_named("weather")
         .supports_tools()
     )
+```
 
-# Tool call — success
+#### Tool call — success
+
+```python
 call = MessageBuilder(HttpxRequestBuilder())\
     .calling_tool("get_weather", arguments={"location": "Madrid"})\
     .build()
@@ -465,22 +572,28 @@ client.post("/mcp", content=call.content, headers=dict(call.headers))\
         .succeeds()
         .returns_text_containing("°C")
     )
+```
 
-# Tool call — tool-level error (HTTP 200, isError=true)
+#### Tool-level error (HTTP 200, isError=true)
+
+```python
 response.assert_mcp(lambda m: (
     m.tool("get_weather")
      .reports_tool_error()
      .with_message_containing("Invalid date")
 ))
+```
 
-# Tool call — protocol error (-32602, -32601, ...)
+#### Protocol error (-32601, -32602, ...)
+
+```python
 response.assert_mcp(lambda m: (
     m.tool("unknown")
      .is_rejected_as_unknown_tool()
 ))
 ```
 
-Stand-alone (no HTTP wrapper) is also supported:
+#### Stand-alone (no HTTP wrapper)
 
 ```python
 from pyssertive.protocols.mcp import AssertableMCP
@@ -492,13 +605,79 @@ AssertableMCP(payload).lists_tools()\
     ))
 ```
 
-Catalog-wide invariants — apply the same assertion to every tool without enumerating names. Useful when a server rewrites its tool schema per caller (auth scopes, feature flags):
+#### Catalog-wide invariants
+
+Apply the same assertion to every tool without enumerating names. Useful when a server rewrites its tool schema per caller (auth scopes, feature flags):
 
 ```python
 AssertableMCP(payload).lists_tools().every_tool(
     lambda t: t.does_not_accept(["internal_user_id"])
 )
 ```
+
+#### Method catalog
+
+The MCP module exposes five assertable types, each scoped to a different MCP structure. Navigate between them with `lists_tools()`, `tool(name)`, the `contains_tool` / `every_tool` callbacks (yielding `AssertableToolDef`), and the `content` callback (yielding `AssertableContent`).
+
+**`AssertableMCP`** — top-level envelope (JSON-RPC response):
+
+| Method                                                                                                                                                                                                              | Purpose                                                          |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| `negotiated_protocol(version)`                                                                                                                                                                                      | Asserts the negotiated MCP protocol version                      |
+| `server_named(name)` / `server_version(version)`                                                                                                                                                                    | Asserts the server's advertised identity                         |
+| `supports_tools()` / `supports_resources(*, subscribe=None)` / `supports_prompts()` / `supports_logging()`                                                                                                          | Asserts a server capability is advertised                        |
+| `has_instructions()`                                                                                                                                                                                                | Asserts the `instructions` field is present                      |
+| `is_rejected_as_invalid_request()` / `is_rejected_as_method_not_found()` / `is_rejected_with_invalid_params()` / `is_rejected_as_internal_error()` / `is_rejected_as_resource_not_found()` / `is_rejected_as_user_rejected()` | Asserts a specific JSON-RPC error code                           |
+| `because_message_contains(substr)`                                                                                                                                                                                  | Asserts the error message contains a substring                   |
+| `lists_tools()`                                                                                                                                                                                                     | Scopes into `AssertableToolList` (tools/list response)           |
+| `tool(name)`                                                                                                                                                                                                        | Scopes into `AssertableToolCall` (tools/call response)           |
+| `is_success()` / `has_error()` / `result()` / `error()` / `error_code()` / `error_message()`                                                                                                                        | Read-only accessors for raw envelope inspection (escape hatches) |
+
+**`AssertableToolList`** — `tools/list` result:
+
+| Method                              | Purpose                                                                  |
+|-------------------------------------|--------------------------------------------------------------------------|
+| `with_count(n)`                     | Asserts the list has exactly `n` tools                                   |
+| `contains_tool(name, callback=None)`| Asserts a tool exists; optional callback for per-tool drill-in           |
+| `does_not_contain_tool(name)`       | Asserts a tool is absent                                                 |
+| `every_tool(callback)`              | Applies the callback to every tool in the list                           |
+| `has_more_pages()`                  | Asserts the response advertises a `nextCursor`                           |
+
+**`AssertableToolDef`** — a single tool definition (received via `contains_tool` / `every_tool` callbacks):
+
+| Method                       | Purpose                                                       |
+|------------------------------|---------------------------------------------------------------|
+| `documented()`               | Asserts the tool has a non-empty description                  |
+| `accepts(params)`            | Asserts each param is in `inputSchema.required`               |
+| `accepts_optional(params)`   | Asserts each param is in `inputSchema.properties`             |
+| `does_not_accept(params)`    | Asserts each param is NOT in `inputSchema.properties`         |
+| `has_output_schema()`        | Asserts `outputSchema` is present                             |
+
+**`AssertableToolCall`** — `tools/call` result:
+
+| Method                                              | Purpose                                                                  |
+|-----------------------------------------------------|--------------------------------------------------------------------------|
+| `succeeds()`                                        | Asserts the call did not return `isError=true`                           |
+| `returns_text(expected)`                            | Asserts a text content block exactly matches                             |
+| `returns_text_containing(substr)`                   | Asserts a text content block contains a substring                        |
+| `returns_image(*, mime_type=None)`                  | Asserts an image content block exists (optionally with mime type)        |
+| `returns_content_count(n)`                          | Asserts the number of content blocks                                     |
+| `returns_structured(expected)`                      | Asserts `structuredContent` equals expected                              |
+| `content(index, callback)`                          | Scopes into `AssertableContent` for a specific block                     |
+| `reports_tool_error()`                              | Asserts the call returned `isError=true` (tool-level error)              |
+| `with_message_containing(substr)`                   | Asserts the error message contains a substring                           |
+| `is_rejected_as_unknown_tool()`                     | Asserts JSON-RPC `-32601` or `-32602` with "unknown tool" message        |
+| `is_rejected_with_invalid_params()`                 | Asserts JSON-RPC `-32602`                                                |
+
+**`AssertableContent`** — a single content block (received via `content` callback):
+
+| Method                                                                                            | Purpose                                  |
+|---------------------------------------------------------------------------------------------------|------------------------------------------|
+| `is_text()` / `is_image()` / `is_audio()` / `is_resource_link()` / `is_resource()`               | Asserts the block type                   |
+| `text_equals(expected)`                                                                           | Asserts text block equals expected       |
+| `text_contains(substr)`                                                                           | Asserts text block contains a substring  |
+| `with_mime_type(expected)`                                                                        | Asserts the block's mime type            |
+| `with_uri(expected)`                                                                              | Asserts the resource URI                 |
 
 #### Building requests with `MessageBuilder`
 
@@ -511,32 +690,37 @@ from pyssertive.adapters.httpx import HttpxRequestBuilder
 # Handshake — returns httpx.Request
 MessageBuilder(HttpxRequestBuilder()).initialize(protocol="2025-11-25").build()
 
-# Tool list / tool call
-MessageBuilder(HttpxRequestBuilder()).listing_tools(cursor="abc").build()
+# Tool call with arguments
 MessageBuilder(HttpxRequestBuilder()).calling_tool("get_weather", arguments={"location": "Madrid"}).build()
 
-# Resources / prompts
-MessageBuilder(HttpxRequestBuilder()).reading_resource("file:///main.py").build()
-MessageBuilder(HttpxRequestBuilder()).getting_prompt("code_review", arguments={"lang": "python"}).build()
-
-# Notifications (no id field, no params if not provided)
-MessageBuilder(HttpxRequestBuilder()).notifying("notifications/initialized").build()
-
-# Low-level escape hatch
-MessageBuilder(HttpxRequestBuilder()).calling("logging/setLevel").with_params({"level": "debug"}).build()
-
-# Auth / protocol / session headers
+# Auth / protocol / session headers chain
 MessageBuilder(HttpxRequestBuilder())\
     .with_auth_token("abc123")\
     .with_protocol_version("2025-11-25")\
     .with_session_id("sess-xyz")\
     .calling_tool("ping")\
     .build()
-
-# Explicit id, custom MCP path
-MessageBuilder(HttpxRequestBuilder(), path="/v1/mcp")\
-    .calling_tool("ping").with_id("req-uuid").build()
 ```
+
+**Method catalog:**
+
+| Method                                                       | Purpose                                                                       |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `MessageBuilder(request_builder, path="/mcp")`               | Constructor — inject any `RequestBuilder`; `path` overrides the MCP endpoint  |
+| `with_id(msg_id)`                                            | Set an explicit JSON-RPC id (default: auto-generated)                         |
+| `with_auth_token(token)`                                     | Adds `Authorization: Bearer <token>` header                                   |
+| `with_protocol_version(version)`                             | Adds `MCP-Protocol-Version` header                                            |
+| `with_session_id(session_id)`                                | Adds `Mcp-Session-Id` header                                                  |
+| `initialize(*, protocol=…, name=…, version=…)`               | `initialize` handshake                                                        |
+| `listing_tools(*, cursor=None)`                              | `tools/list`                                                                  |
+| `calling_tool(name, *, arguments=None)`                      | `tools/call`                                                                  |
+| `listing_resources(*, cursor=None)`                          | `resources/list`                                                              |
+| `reading_resource(uri)`                                      | `resources/read`                                                              |
+| `listing_prompts(*, cursor=None)`                            | `prompts/list`                                                                |
+| `getting_prompt(name, *, arguments=None)`                    | `prompts/get`                                                                 |
+| `notifying(method, *, params=None)`                          | `notifications/*` — fire-and-forget message (no `id` field)                   |
+| `calling(method)` / `with_params(params)`                    | Low-level escape hatch for arbitrary JSON-RPC methods                         |
+| `build()`                                                    | Returns the request object (`httpx.Request`, `HttpRequest`, etc.)             |
 
 Pair it naturally with `assert_mcp` for symmetric request/response code:
 

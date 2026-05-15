@@ -115,7 +115,7 @@ jobs:
         env:
           COVERAGE_FILE: .coverage.core-py${{ matrix.python-version }}
         run: |
-          uv run --no-sync pytest tests/formats/ tests/arch/ tests/protocols/ \
+          uv run --no-sync pytest tests/test_*.py tests/formats/ tests/arch/ tests/protocols/ \
             --cov-fail-under=0 --cov-report=
 
       - name: Upload coverage data
