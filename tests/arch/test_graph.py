@@ -1,6 +1,6 @@
 import pytest
 
-from pyssertive.arch.graph import build_graph
+from pyssertive.arch.assertable import build_graph
 
 
 def test_build_graph_should_return_module_graph_for_package():
@@ -37,7 +37,7 @@ def test_build_graph_should_propagate_unrecognised_value_errors_from_grimp(monke
     def fake_build(*args, **kwargs):
         raise ValueError("something unexpected")
 
-    monkeypatch.setattr("pyssertive.arch.graph.grimp.build_graph", fake_build)
+    monkeypatch.setattr("pyssertive.arch.assertable.grimp.build_graph", fake_build)
 
     with pytest.raises(ValueError, match="something unexpected"):
         build_graph("__unique_pkg_for_l2_test__")

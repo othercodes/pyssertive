@@ -13,6 +13,31 @@ def test_assertable_value_should_wrap_arbitrary_value():
     assert AssertableValue("hello")._value == "hello"
 
 
+def test_expect_json_should_return_assertable_json():
+    from pyssertive.formats.json import AssertableJson
+
+    assert isinstance(expect.json({"a": 1}), AssertableJson)
+
+
+def test_expect_html_should_return_assertable_html():
+    from pyssertive.formats.html import AssertableHtml
+
+    assert isinstance(expect.html("<html><body><h1>Hi</h1></body></html>"), AssertableHtml)
+
+
+def test_expect_mcp_should_return_assertable_mcp():
+    from pyssertive.protocols.mcp import AssertableMCP
+
+    payload = {"jsonrpc": "2.0", "id": 1, "result": {"tools": []}}
+    assert isinstance(expect.mcp(payload), AssertableMCP)
+
+
+def test_expect_arch_should_return_assertable_arch():
+    from pyssertive.arch import AssertableArch
+
+    assert isinstance(expect.arch("pyssertive"), AssertableArch)
+
+
 def test_equals_should_pass_when_values_are_equal():
     expect(42).equals(42)
 
