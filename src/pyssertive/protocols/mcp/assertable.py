@@ -185,13 +185,16 @@ class AssertableMCP:
             error=self._envelope.error if self._envelope.has_error else None,
         )
 
-    def _expect_error_code(self, expected: ErrorCode) -> Self:
+    def _expect_error_code(self, expected: int | ErrorCode) -> Self:
         if not self._envelope.has_error:
-            raise AssertionError(f"Expected MCP error response ({describe(expected)}), got success")
+            raise AssertionError(f"Expected MCP error response ({describe(int(expected))}), got success")
         actual = self._envelope.error_code
         if actual != int(expected):
-            raise AssertionError(f"Expected error code {int(expected)} ({describe(expected)}), got {actual}")
+            raise AssertionError(f"Expected error code {int(expected)} ({describe(int(expected))}), got {actual}")
         return self
+
+    def is_rejected_with_code(self, code: int) -> Self:
+        return self._expect_error_code(code)
 
     def is_rejected_as_parse_error(self) -> Self:
         return self._expect_error_code(ErrorCode.PARSE_ERROR)
@@ -220,4 +223,12 @@ class AssertableMCP:
         message = self._envelope.error_message
         if substr not in message:
             raise AssertionError(f"Error message does not contain {substr!r}: {message!r}")
+        return self
+
+    def because_message_equals(self, expected: str) -> Self:
+        if not self._envelope.has_error:
+            raise AssertionError("because_message_equals() requires an error envelope")
+        message = self._envelope.error_message
+        if message != expected:
+            raise AssertionError(f"Error message does not match {expected!r}: {message!r}")
         return self
