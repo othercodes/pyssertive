@@ -124,3 +124,31 @@ def test_assertable_mcp_should_return_empty_message_when_error_field_is_not_a_di
     payload = {"jsonrpc": "2.0", "id": 1, "error": "boom"}
     with pytest.raises(AssertionError, match="does not contain"):
         AssertableMCP(payload).because_message_contains("anything")
+
+
+def test_is_rejected_with_code_should_pass_when_code_matches():
+    AssertableMCP(_error(code=-32001, message="Auth failed")).is_rejected_with_code(-32001)
+
+
+def test_is_rejected_with_code_should_raise_when_code_differs():
+    with pytest.raises(AssertionError, match="Expected error code -32001"):
+        AssertableMCP(_error(code=-32602, message="Bad params")).is_rejected_with_code(-32001)
+
+
+def test_is_rejected_with_code_should_raise_when_no_error_envelope():
+    with pytest.raises(AssertionError, match="got success"):
+        AssertableMCP(_success()).is_rejected_with_code(-32001)
+
+
+def test_because_message_equals_should_pass_when_exact_match():
+    AssertableMCP(_error(message="Missing Authorization header")).because_message_equals("Missing Authorization header")
+
+
+def test_because_message_equals_should_raise_when_message_differs():
+    with pytest.raises(AssertionError, match="Error message does not match"):
+        AssertableMCP(_error(message="actual")).because_message_equals("expected")
+
+
+def test_because_message_equals_should_raise_when_no_error_envelope():
+    with pytest.raises(AssertionError, match="requires an error envelope"):
+        AssertableMCP(_success()).because_message_equals("anything")
