@@ -1,19 +1,40 @@
 import difflib
 import fnmatch
+import functools
 import sys
 from collections.abc import Callable
 
 import grimp
 
-from pyssertive.arch._chains import find_chain, find_upstream, is_ignored
-from pyssertive.arch.graph import build_graph
+from pyssertive.arch._chains import find_chain, find_package_chain, find_upstream, is_ignored
+
+
+@functools.cache
+def build_graph(package: str) -> grimp.ImportGraph:
+    try:
+        return grimp.build_graph(package, include_external_packages=True)
+    except ValueError as exc:
+        # grimp raises ValueError when the package cannot be located on
+        # sys.path. Translate that to the stdlib ModuleNotFoundError so
+        # callers see a familiar exception type. Other ValueErrors are
+        # re-raised so unrelated grimp failures aren't masked.
+        if "Could not find package" not in str(exc):
+            raise
+        raise ModuleNotFoundError(str(exc)) from exc
+
 
 _STDLIB_TOKEN = "stdlib"
 # fnmatch metacharacters — presence of any of these triggers glob expansion
 # against the import graph rather than literal-string matching.
 _GLOB_CHARS = "*?["
 
-__all__ = ["AssertableArch"]
+__all__ = [
+    "AssertableArch",
+    "AssertableLayers",
+    "AssertableModules",
+    "AssertableMultiArch",
+    "assert_arch",
+]
 
 
 def _is_glob_pattern(s: str) -> bool:
@@ -80,8 +101,8 @@ class AssertableArch:
     def module(
         self,
         name: str,
-        callback: Callable[["AssertableArch | _MultiAssertableArch"], object] | None = None,
-    ) -> "AssertableArch | _MultiAssertableArch":
+        callback: Callable[["AssertableArch | AssertableMultiArch"], object] | None = None,
+    ) -> "AssertableArch | AssertableMultiArch":
         """
         Scope into a submodule, returning an assertable bound to it.
 
@@ -93,9 +114,9 @@ class AssertableArch:
         returned directly.
         """
         resolved = self._resolve_submodule(name)
-        nested: AssertableArch | _MultiAssertableArch
+        nested: AssertableArch | AssertableMultiArch
         if _is_glob_pattern(resolved):
-            nested = _MultiAssertableArch(_expand_glob_source(resolved))
+            nested = AssertableMultiArch(_expand_glob_source(resolved))
             for member in nested._members:
                 member._ignored = list(self._ignored)
         else:
@@ -240,7 +261,7 @@ def _did_you_mean(name: str, graph: grimp.ImportGraph) -> str:
     return ""
 
 
-class _MultiAssertableArch:
+class AssertableMultiArch:
     """
     Wraps several :class:`AssertableArch` instances obtained by glob-expanding
     a source pattern. Each public method dispatches to every member and
@@ -251,41 +272,41 @@ class _MultiAssertableArch:
     def __init__(self, sources: list[str]) -> None:
         self._members = [AssertableArch(s) for s in sources]
 
-    def ignoring(self, patterns: str | list[str]) -> "_MultiAssertableArch":
+    def ignoring(self, patterns: str | list[str]) -> "AssertableMultiArch":
         for member in self._members:
             member.ignoring(patterns)
         return self
 
-    def should_depend_on(self, target: str | list[str], directly: bool = False) -> "_MultiAssertableArch":
+    def should_depend_on(self, target: str | list[str], directly: bool = False) -> "AssertableMultiArch":
         return self._dispatch_assertion("should_depend_on", target, directly=directly)
 
-    def should_not_depend_on(self, target: str | list[str], directly: bool = False) -> "_MultiAssertableArch":
+    def should_not_depend_on(self, target: str | list[str], directly: bool = False) -> "AssertableMultiArch":
         return self._dispatch_assertion("should_not_depend_on", target, directly=directly)
 
-    def should_only_depend_on(self, allowed: str | list[str], directly: bool = True) -> "_MultiAssertableArch":
+    def should_only_depend_on(self, allowed: str | list[str], directly: bool = True) -> "AssertableMultiArch":
         return self._dispatch_assertion("should_only_depend_on", allowed, directly=directly)
 
     def module(
         self,
         name: str,
-        callback: Callable[["AssertableArch | _MultiAssertableArch"], object] | None = None,
-    ) -> "AssertableArch | _MultiAssertableArch":
+        callback: Callable[["AssertableArch | AssertableMultiArch"], object] | None = None,
+    ) -> "AssertableArch | AssertableMultiArch":
         """Descend each member into ``name``, returning a flattened multi or invoking the callback."""
         nested_members: list[AssertableArch] = []
         for member in self._members:
             nested = member.module(name)
-            if isinstance(nested, _MultiAssertableArch):
+            if isinstance(nested, AssertableMultiArch):
                 nested_members.extend(nested._members)
             else:
                 nested_members.append(nested)
-        nested_multi = _MultiAssertableArch.__new__(_MultiAssertableArch)
+        nested_multi = AssertableMultiArch.__new__(AssertableMultiArch)
         nested_multi._members = nested_members
         if callback is not None:
             callback(nested_multi)
             return self
         return nested_multi
 
-    def _dispatch_assertion(self, method_name: str, *args: object, **kwargs: object) -> "_MultiAssertableArch":
+    def _dispatch_assertion(self, method_name: str, *args: object, **kwargs: object) -> "AssertableMultiArch":
         # Relies on AssertableArch._raise_violations prefixing each error with
         # the failing source module — concatenating str(exc) yields a self-
         # describing aggregated message. Changing that prefix elsewhere will
@@ -310,3 +331,158 @@ def _expand_glob_source(pattern: str) -> list[str]:
     if not matches:
         raise ValueError(f"Pattern {pattern!r} did not match any module in package {top!r}.")
     return matches
+
+
+class AssertableLayers:
+    """
+    Fluent layered-architecture assertion.
+
+    Constructed via ``assert_arch.layers``. Each entry is a package or
+    single-file module treated as a layer, ordered from lowest
+    (foundational, no dependencies on layers above) to highest. The
+    ``should_be_independent`` check enforces that no layer imports any
+    layer that follows it in the list, direct or transitive.
+
+    ``ignoring(patterns)`` accepts ``fnmatch`` glob patterns that are
+    skipped during chain traversal so legacy violations can be
+    grandfathered. An alternate non-ignored path still triggers the
+    assertion, matching the semantic used elsewhere in the package.
+    """
+
+    def __init__(self, layers: list[str]) -> None:
+        if len(layers) < 2:
+            raise ValueError("assert_arch.layers requires at least two layers.")
+        self._layers = list(layers)
+        self._package = layers[0].split(".")[0]
+        graph = build_graph(self._package)
+        for layer in self._layers:
+            if layer not in graph.modules:
+                raise ValueError(f"Layer {layer!r} is not in the import graph for package {self._package!r}.")
+        self._ignored: list[str] = []
+
+    def ignoring(self, patterns: str | list[str]) -> "AssertableLayers":
+        """
+        Add fnmatch glob patterns excluded from chain traversal.
+
+        Patterns accumulate; the list is per-instance, not global.
+        """
+        new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
+        self._ignored.extend(new_patterns)
+        return self
+
+    def should_be_independent(self) -> "AssertableLayers":
+        """Assert each layer only depends on layers preceding it in the list."""
+        graph = build_graph(self._package)
+        violations: list[str] = []
+        for i, lower in enumerate(self._layers):
+            for higher in self._layers[i + 1 :]:
+                chain = find_package_chain(graph, lower, higher, self._ignored)
+                if chain is not None:
+                    violations.append(f"{lower} → {higher}: " + " → ".join(chain))
+        if violations:
+            raise AssertionError(
+                "Layered architecture violations (each layer must depend "
+                "only on prior layers):\n  - " + "\n  - ".join(violations)
+            )
+        return self
+
+
+class AssertableModules:
+    """
+    Fluent isolation assertion across an unordered set of modules.
+
+    Constructed via ``assert_arch.modules``. Each entry is a package
+    or module that should not depend on any of the others, in either
+    direction. ``should_be_isolated`` flags any cross-import; pair
+    ``ignoring(patterns)`` with it to grandfather permitted bridges
+    such as published events modules.
+    """
+
+    def __init__(self, modules: list[str]) -> None:
+        if len(modules) < 2:
+            raise ValueError("assert_arch.modules requires at least two modules.")
+        self._modules = list(modules)
+        self._package = modules[0].split(".")[0]
+        graph = build_graph(self._package)
+        for module in self._modules:
+            if module not in graph.modules:
+                raise ValueError(f"Module {module!r} is not in the import graph for package {self._package!r}.")
+        self._ignored: list[str] = []
+
+    def ignoring(self, patterns: str | list[str]) -> "AssertableModules":
+        """
+        Add fnmatch glob patterns excluded from cross-import detection.
+
+        Patterns accumulate; the list is per-instance, not global.
+        """
+        new_patterns = [patterns] if isinstance(patterns, str) else list(patterns)
+        self._ignored.extend(new_patterns)
+        return self
+
+    def should_be_isolated(self) -> "AssertableModules":
+        """Assert no module in the set imports any other, direct or transitive."""
+        graph = build_graph(self._package)
+        violations: list[str] = []
+        for src in self._modules:
+            for dst in self._modules:
+                if src == dst:
+                    continue
+                chain = find_package_chain(graph, src, dst, self._ignored)
+                if chain is not None:
+                    violations.append(f"{src} → {dst}: " + " → ".join(chain))
+        if violations:
+            raise AssertionError("Modules are not isolated:\n  - " + "\n  - ".join(violations))
+        return self
+
+
+class _AssertArch:
+    """
+    Callable entrypoint to architecture assertions.
+
+    Invoke with a module path to obtain an :class:`AssertableArch`;
+    call :meth:`layers` to obtain an :class:`AssertableLayers` for
+    layered architecture rules.
+    """
+
+    def __call__(
+        self,
+        module: str,
+        callback: Callable[[AssertableArch | AssertableMultiArch], object] | None = None,
+    ) -> AssertableArch | AssertableMultiArch:
+        """
+        Return an assertable bound to ``module``. Glob patterns expand
+        across the import graph. When ``callback`` is given it is
+        invoked with the assertable so callers can scope a block of
+        assertions inline.
+        """
+        arch: AssertableArch | AssertableMultiArch = (
+            AssertableMultiArch(_expand_glob_source(module)) if _is_glob_pattern(module) else AssertableArch(module)
+        )
+        if callback is not None:
+            callback(arch)
+        return arch
+
+    def layers(
+        self,
+        layers: list[str],
+        callback: Callable[[AssertableLayers], object] | None = None,
+    ) -> AssertableLayers:
+        """Return an :class:`AssertableLayers` over the ordered layer list, invoking ``callback`` if given."""
+        instance = AssertableLayers(layers)
+        if callback is not None:
+            callback(instance)
+        return instance
+
+    def modules(
+        self,
+        modules: list[str],
+        callback: Callable[[AssertableModules], object] | None = None,
+    ) -> AssertableModules:
+        """Return an :class:`AssertableModules` over the unordered module set, invoking ``callback`` if given."""
+        instance = AssertableModules(modules)
+        if callback is not None:
+            callback(instance)
+        return instance
+
+
+assert_arch = _AssertArch()

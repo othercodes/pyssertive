@@ -3,12 +3,18 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 if sys.version_info >= (3, 11):  # pragma: no cover
     from typing import Self
 else:  # pragma: no cover
     from typing_extensions import Self
+
+if TYPE_CHECKING:
+    from pyssertive.arch import AssertableArch, AssertableMultiArch
+    from pyssertive.formats.html import AssertableHtml
+    from pyssertive.formats.json import AssertableJson
+    from pyssertive.protocols.mcp import AssertableMCP
 
 _MISSING: Any = object()
 
@@ -201,5 +207,33 @@ class _Each:
         return apply
 
 
-def expect(value: Any) -> AssertableValue:
-    return AssertableValue(value)
+class _Expect:
+    def __call__(self, value: Any) -> AssertableValue:
+        return AssertableValue(value)
+
+    def json(self, data: Any) -> AssertableJson:
+        from pyssertive.formats.json import AssertableJson
+
+        return AssertableJson(data)
+
+    def html(self, markup: Any) -> AssertableHtml:
+        from pyssertive.formats.html import AssertableHtml
+
+        return AssertableHtml(markup)
+
+    def mcp(self, payload: Any) -> AssertableMCP:
+        from pyssertive.protocols.mcp import AssertableMCP
+
+        return AssertableMCP(payload)
+
+    def arch(
+        self,
+        name: str,
+        callback: Callable[[AssertableArch | AssertableMultiArch], object] | None = None,
+    ) -> AssertableArch | AssertableMultiArch:
+        from pyssertive.arch import assert_arch
+
+        return assert_arch(name, callback)
+
+
+expect = _Expect()

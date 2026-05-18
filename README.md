@@ -122,6 +122,22 @@ def expect_user(u): return UserExpectation(u)
 expect_user(user).is_admin().is_verified().has_attribute("email")
 ```
 
+#### Unified entry point
+
+`expect` is also a dispatcher to the specialized assertables, same fluent style for any subject:
+
+```python
+from pyssertive import expect
+
+expect(user)                # → AssertableValue (generic)
+expect.json(payload)        # → AssertableJson (dict / str / bytes)
+expect.html(markup)         # → AssertableHtml (str / bytes)
+expect.mcp(envelope)        # → AssertableMCP (dict / response)
+expect.arch("myapp.domain") # → AssertableArch (module name)
+```
+
+Each factory uses lazy imports — `from pyssertive import expect` stays light and only loads the specialized modules on first use. The direct constructors (`AssertableJson(...)`, `AssertableHtml(...)`, `assert_arch(...)`, etc.) remain available for code that prefers them.
+
 #### Matchers reference
 
 | Category     | Matchers                                                                                       |
