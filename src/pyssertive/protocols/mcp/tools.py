@@ -9,7 +9,14 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-from pyssertive.protocols.mcp.content import AssertableContent
+from pyssertive.protocols.mcp.content import (
+    AssertableAudioContent,
+    AssertableContent,
+    AssertableImageContent,
+    AssertableResourceContent,
+    AssertableResourceLinkContent,
+    AssertableTextContent,
+)
 
 
 class AssertableToolDef:
@@ -184,11 +191,76 @@ class AssertableToolCall:
             raise AssertionError(f"Tool '{self._name}' structuredContent: expected {expected!r}, got {actual!r}")
         return self
 
-    def content(self, index: int, callback: Callable[[AssertableContent], Any]) -> Self:
+    def _content_at(self, index: int) -> AssertableContent:
         blocks = self._content_blocks()
         if index >= len(blocks) or index < -len(blocks):
             raise AssertionError(f"Tool '{self._name}' content index {index} out of range (len={len(blocks)})")
-        callback(AssertableContent(blocks[index], index=index))
+        return AssertableContent(blocks[index], index=index)
+
+    def content(
+        self,
+        index: int,
+        callback: Callable[[AssertableContent], Any] | None = None,
+    ) -> AssertableContent | Self:
+        typed = self._content_at(index)
+        if callback is None:
+            return typed
+        callback(typed)
+        return self
+
+    def is_text(
+        self,
+        index: int,
+        callback: Callable[[AssertableTextContent], Any] | None = None,
+    ) -> AssertableTextContent | Self:
+        content = self._content_at(index)
+        if callback is None:
+            return content.is_text()
+        content.is_text(callback)
+        return self
+
+    def is_image(
+        self,
+        index: int,
+        callback: Callable[[AssertableImageContent], Any] | None = None,
+    ) -> AssertableImageContent | Self:
+        content = self._content_at(index)
+        if callback is None:
+            return content.is_image()
+        content.is_image(callback)
+        return self
+
+    def is_audio(
+        self,
+        index: int,
+        callback: Callable[[AssertableAudioContent], Any] | None = None,
+    ) -> AssertableAudioContent | Self:
+        content = self._content_at(index)
+        if callback is None:
+            return content.is_audio()
+        content.is_audio(callback)
+        return self
+
+    def is_resource_link(
+        self,
+        index: int,
+        callback: Callable[[AssertableResourceLinkContent], Any] | None = None,
+    ) -> AssertableResourceLinkContent | Self:
+        content = self._content_at(index)
+        if callback is None:
+            return content.is_resource_link()
+        content.is_resource_link(callback)
+        return self
+
+    def is_resource(
+        self,
+        index: int,
+        callback: Callable[[AssertableResourceContent], Any] | None = None,
+    ) -> AssertableResourceContent | Self:
+        content = self._content_at(index)
+        if callback is None:
+            return content.is_resource()
+        content.is_resource(callback)
         return self
 
     def reports_tool_error(self) -> Self:

@@ -11,6 +11,7 @@ else:  # pragma: no cover
     from typing_extensions import Self
 
 from pyssertive.protocols.mcp.errors import ErrorCode, describe
+from pyssertive.protocols.mcp.prompts import AssertablePromptGet, AssertablePromptList
 from pyssertive.protocols.mcp.tools import AssertableToolCall, AssertableToolList
 
 
@@ -177,6 +178,28 @@ class AssertableMCP:
 
     def lists_tools(self) -> AssertableToolList:
         return AssertableToolList(self._require_result())
+
+    def lists_prompts(self) -> AssertablePromptList:
+        return AssertablePromptList(self._require_result())
+
+    def prompt(self, name: str) -> AssertablePromptGet:
+        return AssertablePromptGet(
+            name=name,
+            result=self._envelope.result if self._envelope.is_success else None,
+            error=self._envelope.error if self._envelope.has_error else None,
+        )
+
+    def is_prompts_list_changed_notification(self) -> Self:
+        method = self._envelope.raw.get("method")
+        if method != "notifications/prompts/list_changed":
+            raise AssertionError(
+                f"Expected MCP notification 'notifications/prompts/list_changed', got method={method!r}"
+            )
+        if "id" in self._envelope.raw:
+            raise AssertionError(
+                f"Expected MCP notification (no 'id' field), got envelope with id={self._envelope.raw['id']!r}"
+            )
+        return self
 
     def tool(self, name: str) -> AssertableToolCall:
         return AssertableToolCall(
