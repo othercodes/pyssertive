@@ -154,9 +154,6 @@ def test_because_message_equals_should_raise_when_no_error_envelope():
         AssertableMCP(_success()).because_message_equals("anything")
 
 
-# --- notifications/prompts/list_changed ---
-
-
 def test_is_prompts_list_changed_notification_should_pass_when_method_matches_and_no_id():
     payload = {"jsonrpc": "2.0", "method": "notifications/prompts/list_changed"}
     AssertableMCP(payload).is_prompts_list_changed_notification()

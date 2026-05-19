@@ -2,32 +2,23 @@ from __future__ import annotations
 
 import pytest
 
-from pyssertive.protocols.mcp.content import (
-    AssertableAudioContent,
-    AssertableContent,
-    AssertableImageContent,
-    AssertableResourceContent,
-    AssertableResourceLinkContent,
-    AssertableTextContent,
-)
-
-# --- AssertableContent discriminators: dual-mode is_X(cb=None) ---
+from pyssertive.protocols.mcp.content import AssertableContent
 
 
 @pytest.mark.parametrize(
-    ("guard", "block", "typed_class"),
+    ("guard", "block"),
     [
-        ("is_text", {"type": "text", "text": "hi"}, AssertableTextContent),
-        ("is_image", {"type": "image", "mimeType": "image/png", "data": "Zm9v"}, AssertableImageContent),
-        ("is_audio", {"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}, AssertableAudioContent),
-        ("is_resource_link", {"type": "resource_link", "uri": "file:///x"}, AssertableResourceLinkContent),
-        ("is_resource", {"type": "resource", "resource": {"uri": "file:///x"}}, AssertableResourceContent),
+        ("is_text", {"type": "text", "text": "hi"}),
+        ("is_image", {"type": "image", "mimeType": "image/png", "data": "Zm9v"}),
+        ("is_audio", {"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}),
+        ("is_resource_link", {"type": "resource_link", "uri": "file:///x"}),
+        ("is_resource", {"type": "resource", "resource": {"uri": "file:///x"}}),
     ],
+    ids=["text", "image", "audio", "resource_link", "resource"],
 )
-def test_type_guard_should_return_typed_subclass_when_no_callback(guard, block, typed_class):
-    content = AssertableContent(block, index=0)
-    typed = getattr(content, guard)()
-    assert isinstance(typed, typed_class)
+def test_type_guard_should_pass_for_matching_type(guard, block):
+    result = getattr(AssertableContent(block, label="Content[0]"), guard)()
+    assert isinstance(result, AssertableContent)
 
 
 @pytest.mark.parametrize(
@@ -39,283 +30,298 @@ def test_type_guard_should_return_typed_subclass_when_no_callback(guard, block, 
         ("is_resource_link", {"type": "resource"}),
         ("is_resource", {"type": "resource_link"}),
     ],
-)
-def test_type_guard_should_raise_when_block_is_wrong_type(guard, wrong_block):
-    content = AssertableContent(wrong_block, index=0)
-    with pytest.raises(AssertionError, match="expected"):
-        getattr(content, guard)()
-
-
-@pytest.mark.parametrize(
-    ("guard", "block", "typed_class"),
-    [
-        ("is_text", {"type": "text", "text": "hi"}, AssertableTextContent),
-        ("is_image", {"type": "image", "mimeType": "image/png", "data": "Zm9v"}, AssertableImageContent),
-        ("is_audio", {"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}, AssertableAudioContent),
-        ("is_resource_link", {"type": "resource_link", "uri": "file:///x"}, AssertableResourceLinkContent),
-        ("is_resource", {"type": "resource", "resource": {"uri": "file:///x"}}, AssertableResourceContent),
+    ids=[
+        "is_text_on_image",
+        "is_image_on_text",
+        "is_audio_on_text",
+        "is_resource_link_on_resource",
+        "is_resource_on_resource_link",
     ],
 )
-def test_type_guard_should_invoke_callback_with_typed_subclass_and_return_self(guard, block, typed_class):
-    content = AssertableContent(block, index=0)
-    received: list = []
-    result = getattr(content, guard)(lambda t: received.append(t))
-    assert len(received) == 1
-    assert isinstance(received[0], typed_class)
-    assert result is content
-
-
-def test_type_guard_should_raise_before_invoking_callback_when_block_is_wrong_type():
-    content = AssertableContent({"type": "image"}, index=0)
-    called: list = []
+def test_type_guard_should_raise_when_block_is_wrong_type(guard, wrong_block):
     with pytest.raises(AssertionError, match="expected"):
-        content.is_text(lambda t: called.append(t))
-    assert called == []
+        getattr(AssertableContent(wrong_block, label="Content[0]"), guard)()
 
 
 def test_type_guard_should_raise_when_block_is_not_a_dict():
-    content = AssertableContent("not-a-dict", index=0)
     with pytest.raises(AssertionError, match="not a dict"):
-        content.is_text()
+        AssertableContent("not-a-dict", label="Content[0]").is_text()
 
 
 def test_type_guard_should_mention_unknown_type_when_type_field_absent():
-    content = AssertableContent({}, index=0)
     with pytest.raises(AssertionError, match="'<unknown>'"):
-        content.is_text()
+        AssertableContent({}, label="Content[0]").is_text()
 
 
-# --- AssertableTextContent ---
+def test_type_guard_should_treat_non_string_type_as_unknown():
+    with pytest.raises(AssertionError, match="'<unknown>'"):
+        AssertableContent({"type": 42}, label="Content[0]").is_text()
 
 
-def test_text_text_equals_should_pass_when_text_matches():
-    typed = AssertableTextContent({"type": "text", "text": "abc"}, index=0)
-    typed.text_equals("abc")
+def test_with_text_should_pass_on_text_block():
+    AssertableContent({"type": "text", "text": "hi"}, label="Content[0]").with_text("hi")
 
 
-def test_text_text_equals_should_raise_when_text_differs():
-    typed = AssertableTextContent({"type": "text", "text": "abc"}, index=0)
+def test_with_text_should_pass_on_resource_block_with_embedded_text():
+    AssertableContent({"type": "resource", "resource": {"uri": "x", "text": "hi"}}, label="Content[0]").with_text("hi")
+
+
+def test_with_text_should_raise_when_text_differs_on_text_block():
     with pytest.raises(AssertionError, match="expected 'xyz'"):
-        typed.text_equals("xyz")
+        AssertableContent({"type": "text", "text": "abc"}, label="Content[0]").with_text("xyz")
 
 
-def test_text_text_contains_should_pass_when_substring_present():
-    typed = AssertableTextContent({"type": "text", "text": "hello world"}, index=0)
-    typed.text_contains("world")
+def test_with_text_should_raise_when_text_differs_on_resource_block():
+    with pytest.raises(AssertionError, match="expected 'xyz'"):
+        AssertableContent({"type": "resource", "resource": {"uri": "x", "text": "abc"}}, label="Content[0]").with_text(
+            "xyz"
+        )
 
 
-def test_text_text_contains_should_raise_when_substring_absent():
-    typed = AssertableTextContent({"type": "text", "text": "hello"}, index=0)
+def test_with_text_should_raise_when_block_type_does_not_carry_text():
+    with pytest.raises(AssertionError, match=r"with_text\(\) requires type"):
+        AssertableContent({"type": "image", "data": "Zm9v"}, label="Content[0]").with_text("hi")
+
+
+def test_with_text_containing_should_pass_when_substring_present():
+    AssertableContent({"type": "text", "text": "hello world"}, label="Content[0]").with_text_containing("world")
+
+
+def test_with_text_containing_should_pass_on_resource_block():
+    AssertableContent(
+        {"type": "resource", "resource": {"uri": "x", "text": "def main(): pass"}}, label="Content[0]"
+    ).with_text_containing("def main")
+
+
+def test_with_text_containing_should_raise_when_substring_absent():
     with pytest.raises(AssertionError, match="does not contain"):
-        typed.text_contains("world")
+        AssertableContent({"type": "text", "text": "hello"}, label="Content[0]").with_text_containing("missing")
 
 
-def test_text_is_not_empty_should_pass_when_text_truthy():
-    typed = AssertableTextContent({"type": "text", "text": "hi"}, index=0)
-    typed.is_not_empty()
+def test_with_text_containing_should_raise_for_wrong_type():
+    with pytest.raises(AssertionError, match=r"with_text_containing\(\) requires type"):
+        AssertableContent({"type": "image"}, label="Content[0]").with_text_containing("anything")
 
 
-def test_text_is_not_empty_should_raise_when_text_empty():
-    typed = AssertableTextContent({"type": "text", "text": ""}, index=0)
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "text", "text": "hi"},
+        {"type": "resource", "resource": {"uri": "x", "text": "hi"}},
+        {"type": "resource", "resource": {"uri": "x", "blob": "Zm9v"}},
+        {"type": "image", "data": "Zm9v"},
+        {"type": "audio", "data": "Zm9v"},
+    ],
+    ids=["text", "resource_with_text", "resource_with_blob", "image", "audio"],
+)
+def test_is_not_empty_should_pass_when_payload_present(block):
+    AssertableContent(block, label="Content[0]").is_not_empty()
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "text", "text": ""},
+        {"type": "text"},
+        {"type": "resource", "resource": {"uri": "x"}},
+        {"type": "image", "data": ""},
+        {"type": "image"},
+        {"type": "audio", "data": ""},
+    ],
+    ids=[
+        "text_empty",
+        "text_absent",
+        "resource_no_payload",
+        "image_data_empty",
+        "image_data_absent",
+        "audio_data_empty",
+    ],
+)
+def test_is_not_empty_should_raise_when_payload_missing(block):
     with pytest.raises(AssertionError, match="empty"):
-        typed.is_not_empty()
+        AssertableContent(block, label="Content[0]").is_not_empty()
 
 
-def test_text_is_not_empty_should_raise_when_text_field_absent():
-    typed = AssertableTextContent({"type": "text"}, index=0)
+def test_is_not_empty_should_raise_when_payload_is_not_a_string():
     with pytest.raises(AssertionError, match="empty"):
-        typed.is_not_empty()
+        AssertableContent({"type": "text", "text": 42}, label="Content[0]").is_not_empty()
 
 
-# --- AssertableImageContent ---
+def test_is_not_empty_should_raise_for_wrong_type():
+    with pytest.raises(AssertionError, match=r"is_not_empty\(\) requires type"):
+        AssertableContent({"type": "resource_link", "uri": "x"}, label="Content[0]").is_not_empty()
 
 
-def test_image_with_mime_type_should_pass_when_matches():
-    typed = AssertableImageContent({"type": "image", "mimeType": "image/png", "data": "Zm9v"}, index=0)
-    typed.with_mime_type("image/png")
+@pytest.mark.parametrize(
+    ("block", "expected"),
+    [
+        ({"type": "image", "mimeType": "image/png", "data": "Zm9v"}, "image/png"),
+        ({"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}, "audio/mpeg"),
+        ({"type": "resource_link", "uri": "x", "mimeType": "text/x-python"}, "text/x-python"),
+        ({"type": "resource", "resource": {"uri": "x", "mimeType": "text/yaml"}}, "text/yaml"),
+    ],
+    ids=["image", "audio", "resource_link", "embedded_resource"],
+)
+def test_with_mime_type_should_pass_for_compatible_types(block, expected):
+    AssertableContent(block, label="Content[0]").with_mime_type(expected)
 
 
-def test_image_with_mime_type_should_raise_when_differs():
-    typed = AssertableImageContent({"type": "image", "mimeType": "image/jpeg"}, index=0)
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "image", "mimeType": "image/jpeg"},
+        {"type": "image", "data": "Zm9v"},
+    ],
+    ids=["differs", "absent"],
+)
+def test_with_mime_type_should_raise_when_value_does_not_match(block):
     with pytest.raises(AssertionError, match="mimeType"):
-        typed.with_mime_type("image/png")
+        AssertableContent(block, label="Content[0]").with_mime_type("image/png")
 
 
-def test_image_with_base64_data_should_pass_for_valid_base64():
-    typed = AssertableImageContent({"type": "image", "data": "aGVsbG8="}, index=0)
-    typed.with_base64_data()
+def test_with_mime_type_should_raise_on_text_block():
+    with pytest.raises(AssertionError, match=r"with_mime_type\(\) requires type"):
+        AssertableContent({"type": "text", "text": "hi"}, label="Content[0]").with_mime_type("text/plain")
 
 
-def test_image_with_base64_data_should_raise_when_data_missing():
-    typed = AssertableImageContent({"type": "image", "data": ""}, index=0)
+def test_with_base64_data_should_pass_for_valid_image_data():
+    AssertableContent({"type": "image", "data": "aGVsbG8="}, label="Content[0]").with_base64_data()
+
+
+def test_with_base64_data_should_pass_for_valid_audio_data():
+    AssertableContent({"type": "audio", "data": "aGVsbG8="}, label="Content[0]").with_base64_data()
+
+
+def test_with_base64_data_should_raise_when_data_missing():
     with pytest.raises(AssertionError, match="missing or empty"):
-        typed.with_base64_data()
+        AssertableContent({"type": "image", "data": ""}, label="Content[0]").with_base64_data()
 
 
-def test_image_with_base64_data_should_raise_when_data_invalid():
-    typed = AssertableImageContent({"type": "image", "data": "%%%not-base64"}, index=0)
+def test_with_base64_data_should_raise_when_data_invalid():
     with pytest.raises(AssertionError, match="not valid base64"):
-        typed.with_base64_data()
+        AssertableContent({"type": "image", "data": "%%%nope"}, label="Content[0]").with_base64_data()
 
 
-# --- AssertableAudioContent (same shape as image) ---
+def test_with_base64_data_should_raise_for_wrong_type():
+    with pytest.raises(AssertionError, match=r"with_base64_data\(\) requires type"):
+        AssertableContent({"type": "resource", "resource": {"uri": "x"}}, label="Content[0]").with_base64_data()
 
 
-def test_audio_with_mime_type_should_pass_when_matches():
-    typed = AssertableAudioContent({"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}, index=0)
-    typed.with_mime_type("audio/mpeg")
+def test_with_blob_data_should_pass_for_valid_blob():
+    AssertableContent(
+        {"type": "resource", "resource": {"uri": "x", "blob": "aGVsbG8="}}, label="Content[0]"
+    ).with_blob_data()
 
 
-def test_audio_with_mime_type_should_raise_when_differs():
-    typed = AssertableAudioContent({"type": "audio", "mimeType": "audio/wav"}, index=0)
-    with pytest.raises(AssertionError, match="mimeType"):
-        typed.with_mime_type("audio/mpeg")
-
-
-def test_audio_with_base64_data_should_pass_for_valid_base64():
-    typed = AssertableAudioContent({"type": "audio", "data": "aGVsbG8="}, index=0)
-    typed.with_base64_data()
-
-
-def test_audio_with_base64_data_should_raise_when_data_invalid():
-    typed = AssertableAudioContent({"type": "audio", "data": "%%%not-base64"}, index=0)
-    with pytest.raises(AssertionError, match="not valid base64"):
-        typed.with_base64_data()
-
-
-# --- AssertableResourceLinkContent ---
-
-
-def test_resource_link_with_uri_should_pass_when_matches():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "file:///main.py"}, index=0)
-    typed.with_uri("file:///main.py")
-
-
-def test_resource_link_with_uri_should_raise_when_differs():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "file:///wrong.py"}, index=0)
-    with pytest.raises(AssertionError, match="uri"):
-        typed.with_uri("file:///main.py")
-
-
-def test_resource_link_named_should_pass_when_matches():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "x", "name": "main.py"}, index=0)
-    typed.named("main.py")
-
-
-def test_resource_link_named_should_raise_when_differs():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "x", "name": "other.py"}, index=0)
-    with pytest.raises(AssertionError, match="name"):
-        typed.named("main.py")
-
-
-def test_resource_link_named_should_raise_when_name_field_absent():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "x"}, index=0)
-    with pytest.raises(AssertionError, match="name"):
-        typed.named("main.py")
-
-
-def test_resource_link_with_mime_type_should_pass_when_matches():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "x", "mimeType": "text/x-python"}, index=0)
-    typed.with_mime_type("text/x-python")
-
-
-def test_resource_link_with_mime_type_should_raise_when_differs():
-    typed = AssertableResourceLinkContent({"type": "resource_link", "uri": "x", "mimeType": "text/plain"}, index=0)
-    with pytest.raises(AssertionError, match="mimeType"):
-        typed.with_mime_type("text/x-python")
-
-
-# --- AssertableResourceContent (embedded resource) ---
-
-
-def test_resource_with_uri_should_pass_for_embedded_uri():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "file:///x.py", "text": "y"}}, index=0)
-    typed.with_uri("file:///x.py")
-
-
-def test_resource_with_uri_should_raise_when_differs():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "file:///other.py"}}, index=0)
-    with pytest.raises(AssertionError, match="uri"):
-        typed.with_uri("file:///x.py")
-
-
-def test_resource_with_mime_type_should_pass_when_matches():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "mimeType": "text/yaml"}}, index=0)
-    typed.with_mime_type("text/yaml")
-
-
-def test_resource_with_mime_type_should_raise_when_differs():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "mimeType": "text/plain"}}, index=0)
-    with pytest.raises(AssertionError, match="mimeType"):
-        typed.with_mime_type("text/yaml")
-
-
-def test_resource_with_text_should_pass_when_matches():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "text": "debug: true"}}, index=0)
-    typed.with_text("debug: true")
-
-
-def test_resource_with_text_should_raise_when_differs():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "text": "other"}}, index=0)
-    with pytest.raises(AssertionError, match="text"):
-        typed.with_text("expected")
-
-
-def test_resource_with_text_should_raise_when_text_field_absent():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x"}}, index=0)
-    with pytest.raises(AssertionError, match="text"):
-        typed.with_text("expected")
-
-
-def test_resource_with_text_containing_should_pass_when_substring_present():
-    typed = AssertableResourceContent(
-        {"type": "resource", "resource": {"uri": "x", "text": "def main(): pass"}}, index=0
-    )
-    typed.with_text_containing("def main")
-
-
-def test_resource_with_text_containing_should_raise_when_substring_absent():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "text": "x = 1"}}, index=0)
-    with pytest.raises(AssertionError, match="does not contain"):
-        typed.with_text_containing("def main")
-
-
-def test_resource_with_blob_data_should_pass_for_valid_base64_blob():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "blob": "aGVsbG8="}}, index=0)
-    typed.with_blob_data()
-
-
-def test_resource_with_blob_data_should_raise_when_blob_missing():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x"}}, index=0)
+def test_with_blob_data_should_raise_when_blob_missing():
     with pytest.raises(AssertionError, match="missing or empty"):
-        typed.with_blob_data()
+        AssertableContent({"type": "resource", "resource": {"uri": "x"}}, label="Content[0]").with_blob_data()
 
 
-def test_resource_with_blob_data_should_raise_when_blob_invalid_base64():
-    typed = AssertableResourceContent({"type": "resource", "resource": {"uri": "x", "blob": "%%%not-base64"}}, index=0)
+def test_with_blob_data_should_raise_when_blob_invalid_base64():
     with pytest.raises(AssertionError, match="not valid base64"):
-        typed.with_blob_data()
+        AssertableContent(
+            {"type": "resource", "resource": {"uri": "x", "blob": "%%%nope"}}, label="Content[0]"
+        ).with_blob_data()
 
 
-# --- chaining: each typed assertion returns Self ---
+def test_with_blob_data_should_raise_for_wrong_type():
+    with pytest.raises(AssertionError, match=r"with_blob_data\(\) requires type"):
+        AssertableContent({"type": "image", "data": "Zm9v"}, label="Content[0]").with_blob_data()
 
 
-def test_text_methods_should_return_self_for_chaining():
-    typed = AssertableTextContent({"type": "text", "text": "hello world"}, index=0)
-    result = typed.text_contains("hello").text_contains("world").is_not_empty()
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "resource_link", "uri": "file:///main.py"},
+        {"type": "resource", "resource": {"uri": "file:///main.py"}},
+    ],
+    ids=["resource_link", "embedded_resource"],
+)
+def test_with_uri_should_pass_on_compatible_types(block):
+    AssertableContent(block, label="Content[0]").with_uri("file:///main.py")
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "resource_link", "uri": "file:///wrong"},
+        {"type": "resource_link"},
+        {"type": "resource", "resource": {"uri": "file:///wrong"}},
+        {"type": "resource", "resource": {}},
+    ],
+    ids=["link_differs", "link_absent", "embedded_differs", "embedded_absent"],
+)
+def test_with_uri_should_raise_when_value_does_not_match(block):
+    with pytest.raises(AssertionError, match="uri"):
+        AssertableContent(block, label="Content[0]").with_uri("file:///right")
+
+
+def test_with_uri_should_raise_for_wrong_type():
+    with pytest.raises(AssertionError, match=r"with_uri\(\) requires type"):
+        AssertableContent({"type": "text", "text": "hi"}, label="Content[0]").with_uri("file:///x")
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "resource_link", "uri": "x", "name": "main.py"},
+        {"type": "resource", "resource": {"uri": "x", "name": "main.py"}},
+    ],
+    ids=["resource_link", "embedded_resource"],
+)
+def test_named_should_pass_when_name_matches(block):
+    AssertableContent(block, label="Content[0]").named("main.py")
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "resource_link", "uri": "x", "name": "other.py"},
+        {"type": "resource", "resource": {"uri": "x", "name": "other.py"}},
+    ],
+    ids=["resource_link", "embedded_resource"],
+)
+def test_named_should_raise_when_name_differs(block):
+    with pytest.raises(AssertionError, match="name"):
+        AssertableContent(block, label="Content[0]").named("main.py")
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"type": "resource_link", "uri": "x"},
+        {"type": "resource", "resource": {"uri": "x"}},
+    ],
+    ids=["resource_link", "embedded_resource"],
+)
+def test_named_should_raise_when_name_field_absent(block):
+    with pytest.raises(AssertionError, match="name"):
+        AssertableContent(block, label="Content[0]").named("main.py")
+
+
+def test_named_should_raise_for_wrong_type():
+    with pytest.raises(AssertionError, match=r"named\(\) requires type"):
+        AssertableContent({"type": "text", "text": "hi"}, label="Content[0]").named("main.py")
+
+
+def test_resource_methods_should_raise_when_resource_field_absent():
+    with pytest.raises(AssertionError, match="resource is not a dict"):
+        AssertableContent({"type": "resource"}, label="Content[0]").with_uri("file:///x")
+
+
+def test_resource_methods_should_raise_when_resource_field_is_not_a_dict():
+    with pytest.raises(AssertionError, match="resource is not a dict"):
+        AssertableContent({"type": "resource", "resource": "not-a-dict"}, label="Content[0]").with_uri("file:///x")
+
+
+def test_methods_should_return_self_for_chaining():
+    block = {"type": "resource", "resource": {"uri": "file:///x", "mimeType": "text/yaml", "text": "k: v"}}
+    typed = AssertableContent(block, label="Content[0]")
+    result = typed.is_resource().with_uri("file:///x").with_mime_type("text/yaml").with_text("k: v")
     assert result is typed
 
 
-def test_image_methods_should_return_self_for_chaining():
-    typed = AssertableImageContent({"type": "image", "mimeType": "image/png", "data": "aGVsbG8="}, index=0)
-    result = typed.with_mime_type("image/png").with_base64_data()
-    assert result is typed
-
-
-def test_resource_methods_should_return_self_for_chaining():
-    typed = AssertableResourceContent(
-        {"type": "resource", "resource": {"uri": "file:///x", "mimeType": "text/yaml", "text": "k: v"}},
-        index=0,
-    )
-    result = typed.with_uri("file:///x").with_mime_type("text/yaml").with_text("k: v")
-    assert result is typed
+def test_label_should_appear_in_error_messages():
+    with pytest.raises(AssertionError, match=r"Tool 'foo' content\[3\] is of type 'image', expected 'text'"):
+        AssertableContent({"type": "image"}, label="Tool 'foo' content[3]").is_text()

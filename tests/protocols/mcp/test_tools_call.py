@@ -190,7 +190,7 @@ def test_tool_content_scope_should_pass_when_callback_validates_block():
     payload = _success_call(
         content=[{"type": "text", "text": "hi"}, {"type": "image", "mimeType": "image/png", "data": "Zm9v"}]
     )
-    AssertableMCP(payload).tool("multi").content(0, lambda c: c.is_text().text_equals("hi"))
+    AssertableMCP(payload).tool("multi").content(0, lambda c: c.is_text().with_text("hi"))
 
 
 def test_tool_content_scope_should_raise_when_index_out_of_range():
@@ -211,7 +211,7 @@ def test_tool_content_should_return_assertable_content_when_no_callback():
 
 def test_tool_content_chain_should_work_without_callback():
     payload = _success_call(content=[{"type": "text", "text": "hi"}])
-    AssertableMCP(payload).tool("x").content(0).is_text().text_equals("hi")
+    AssertableMCP(payload).tool("x").content(0).is_text().with_text("hi")
 
 
 def test_tool_content_no_callback_should_raise_when_index_out_of_range():
@@ -219,79 +219,7 @@ def test_tool_content_no_callback_should_raise_when_index_out_of_range():
         AssertableMCP(_success_call()).tool("multi").content(99)
 
 
-# --- typed shortcuts on AssertableToolCall: is_<type>(idx, cb=None) ---
-
-
-def test_tool_is_text_should_return_typed_text_content_when_no_callback():
-    from pyssertive.protocols.mcp.content import AssertableTextContent
-
-    payload = _success_call(content=[{"type": "text", "text": "hi"}])
-    result = AssertableMCP(payload).tool("x").is_text(0)
-    assert isinstance(result, AssertableTextContent)
-
-
-def test_tool_is_text_should_chain_text_assertions_without_callback():
-    payload = _success_call(content=[{"type": "text", "text": "72°F"}])
-    AssertableMCP(payload).tool("x").is_text(0).text_equals("72°F")
-
-
-def test_tool_is_text_should_invoke_callback_and_chain_back_to_tool_call():
-    payload = _success_call(content=[{"type": "text", "text": "hi"}])
-    AssertableMCP(payload).tool("x").is_text(0, lambda t: t.text_equals("hi")).returns_content_count(1)
-
-
-def test_tool_is_text_should_raise_when_block_is_not_text():
-    payload = _success_call(content=[{"type": "image", "mimeType": "image/png", "data": "Zm9v"}])
-    with pytest.raises(AssertionError, match="expected"):
-        AssertableMCP(payload).tool("x").is_text(0)
-
-
-def test_tool_is_text_should_raise_when_index_out_of_range():
-    with pytest.raises(AssertionError, match="out of range"):
-        AssertableMCP(_success_call()).tool("x").is_text(99)
-
-
-def test_tool_is_image_should_chain_image_assertions_without_callback():
-    payload = _success_call(content=[{"type": "image", "mimeType": "image/png", "data": "Zm9v"}])
-    AssertableMCP(payload).tool("x").is_image(0).with_mime_type("image/png").with_base64_data()
-
-
-def test_tool_is_image_should_raise_when_block_is_not_image():
-    payload = _success_call(content=[{"type": "text", "text": "hi"}])
-    with pytest.raises(AssertionError, match="expected"):
-        AssertableMCP(payload).tool("x").is_image(0)
-
-
-def test_tool_is_audio_should_chain_audio_assertions_without_callback():
-    payload = _success_call(content=[{"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}])
-    AssertableMCP(payload).tool("x").is_audio(0).with_mime_type("audio/mpeg")
-
-
-def test_tool_is_resource_link_should_chain_without_callback():
-    payload = _success_call(content=[{"type": "resource_link", "uri": "file:///x.py", "name": "x.py"}])
-    AssertableMCP(payload).tool("x").is_resource_link(0).with_uri("file:///x.py").named("x.py")
-
-
-def test_tool_is_resource_should_chain_without_callback():
-    payload = _success_call(content=[{"type": "resource", "resource": {"uri": "file:///x", "text": "hi"}}])
-    AssertableMCP(payload).tool("x").is_resource(0).with_uri("file:///x").with_text("hi")
-
-
-def test_tool_is_resource_should_invoke_callback_and_chain_back():
-    payload = _success_call(content=[{"type": "resource", "resource": {"uri": "file:///x", "text": "hi"}}])
-    AssertableMCP(payload).tool("x").is_resource(0, lambda r: r.with_uri("file:///x")).returns_content_count(1)
-
-
-def test_tool_is_image_should_invoke_callback_and_chain_back():
-    payload = _success_call(content=[{"type": "image", "mimeType": "image/png", "data": "Zm9v"}])
-    AssertableMCP(payload).tool("x").is_image(0, lambda i: i.with_mime_type("image/png")).returns_content_count(1)
-
-
-def test_tool_is_audio_should_invoke_callback_and_chain_back():
-    payload = _success_call(content=[{"type": "audio", "mimeType": "audio/mpeg", "data": "Zm9v"}])
-    AssertableMCP(payload).tool("x").is_audio(0, lambda a: a.with_mime_type("audio/mpeg")).returns_content_count(1)
-
-
-def test_tool_is_resource_link_should_invoke_callback_and_chain_back():
-    payload = _success_call(content=[{"type": "resource_link", "uri": "file:///x"}])
-    AssertableMCP(payload).tool("x").is_resource_link(0, lambda r: r.with_uri("file:///x")).returns_content_count(1)
+def test_tool_content_should_resolve_negative_index_in_label():
+    payload = _success_call(content=[{"type": "text", "text": "a"}, {"type": "text", "text": "b"}])
+    with pytest.raises(AssertionError, match=r"content\[1\]"):
+        AssertableMCP(payload).tool("x").content(-1).with_text("wrong")

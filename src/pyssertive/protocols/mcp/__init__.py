@@ -1,12 +1,5 @@
 from pyssertive.protocols.mcp.assertable import AssertableMCP
-from pyssertive.protocols.mcp.content import (
-    AssertableAudioContent,
-    AssertableContent,
-    AssertableImageContent,
-    AssertableResourceContent,
-    AssertableResourceLinkContent,
-    AssertableTextContent,
-)
+from pyssertive.protocols.mcp.content import AssertableContent
 from pyssertive.protocols.mcp.errors import ErrorCode
 from pyssertive.protocols.mcp.prompts import (
     AssertablePromptDef,
@@ -17,17 +10,12 @@ from pyssertive.protocols.mcp.prompts import (
 from pyssertive.protocols.mcp.tools import AssertableToolCall, AssertableToolDef, AssertableToolList
 
 __all__ = [
-    "AssertableAudioContent",
     "AssertableContent",
-    "AssertableImageContent",
     "AssertableMCP",
     "AssertablePromptDef",
     "AssertablePromptGet",
     "AssertablePromptList",
     "AssertablePromptMessage",
-    "AssertableResourceContent",
-    "AssertableResourceLinkContent",
-    "AssertableTextContent",
     "AssertableToolCall",
     "AssertableToolDef",
     "AssertableToolList",

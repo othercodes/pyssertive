@@ -9,14 +9,7 @@ if sys.version_info >= (3, 11):  # pragma: no cover
 else:  # pragma: no cover
     from typing_extensions import Self
 
-from pyssertive.protocols.mcp.content import (
-    AssertableAudioContent,
-    AssertableContent,
-    AssertableImageContent,
-    AssertableResourceContent,
-    AssertableResourceLinkContent,
-    AssertableTextContent,
-)
+from pyssertive.protocols.mcp.content import AssertableContent
 
 
 class AssertablePromptDef:
@@ -116,13 +109,15 @@ class AssertablePromptMessage:
 
     def _content_block(self) -> dict[str, Any]:
         msg = self._require_dict()
-        content = msg.get("content")
+        if "content" not in msg:
+            raise AssertionError(f"Message[{self._index}] has no 'content' field")
+        content = msg["content"]
         if not isinstance(content, dict):
             raise AssertionError(f"Message[{self._index}].content is not a dict: {content!r}")
         return content
 
     def _assertable_content(self) -> AssertableContent:
-        return AssertableContent(self._content_block(), index=self._index)
+        return AssertableContent(self._content_block(), label=f"Message[{self._index}].content")
 
     def is_from_user(self) -> Self:
         role = self._require_dict().get("role")
@@ -136,66 +131,11 @@ class AssertablePromptMessage:
             raise AssertionError(f"Message[{self._index}] role: expected 'assistant', got {role!r}")
         return self
 
-    def has_text_content(self) -> Self:
-        self._assertable_content().is_text().is_not_empty()
-        return self
-
-    def with_text_content(self, expected: str) -> Self:
-        self._assertable_content().is_text().text_equals(expected)
-        return self
-
-    def with_text_containing(self, substr: str) -> Self:
-        self._assertable_content().is_text().text_contains(substr)
-        return self
-
     def content(self, callback: Callable[[AssertableContent], Any] | None = None) -> AssertableContent | Self:
         typed = self._assertable_content()
         if callback is None:
             return typed
         callback(typed)
-        return self
-
-    def is_text(self, callback: Callable[[AssertableTextContent], Any] | None = None) -> AssertableTextContent | Self:
-        content = self._assertable_content()
-        if callback is None:
-            return content.is_text()
-        content.is_text(callback)
-        return self
-
-    def is_image(
-        self, callback: Callable[[AssertableImageContent], Any] | None = None
-    ) -> AssertableImageContent | Self:
-        content = self._assertable_content()
-        if callback is None:
-            return content.is_image()
-        content.is_image(callback)
-        return self
-
-    def is_audio(
-        self, callback: Callable[[AssertableAudioContent], Any] | None = None
-    ) -> AssertableAudioContent | Self:
-        content = self._assertable_content()
-        if callback is None:
-            return content.is_audio()
-        content.is_audio(callback)
-        return self
-
-    def is_resource_link(
-        self, callback: Callable[[AssertableResourceLinkContent], Any] | None = None
-    ) -> AssertableResourceLinkContent | Self:
-        content = self._assertable_content()
-        if callback is None:
-            return content.is_resource_link()
-        content.is_resource_link(callback)
-        return self
-
-    def is_resource(
-        self, callback: Callable[[AssertableResourceContent], Any] | None = None
-    ) -> AssertableResourceContent | Self:
-        content = self._assertable_content()
-        if callback is None:
-            return content.is_resource()
-        content.is_resource(callback)
         return self
 
 
@@ -218,6 +158,8 @@ class AssertablePromptGet:
                 f"({self._error.get('code')}): {self._error.get('message')!r}"
             )
         if self._result is None:
+            # MCP methods never return `result: null` — every method has a typed result shape
+            # (even `ping` returns `{}`). Treating null as malformed catches server bugs early.
             raise AssertionError(f"Prompt '{self._name}' response has no result payload")
         return self._result
 
@@ -240,7 +182,7 @@ class AssertablePromptGet:
         actual_index = index if index >= 0 else len(messages) + index
         return AssertablePromptMessage(messages[index], index=actual_index)
 
-    def _drill(
+    def _drill_message(
         self,
         index: int,
         callback: Callable[[AssertablePromptMessage], Any] | None,
@@ -263,6 +205,10 @@ class AssertablePromptGet:
             raise AssertionError(f"Prompt '{self._name}' description does not contain {substr!r}: {actual!r}")
         return self
 
+    def succeeds(self) -> Self:
+        self._require_result()
+        return self
+
     def with_message_count(self, expected: int) -> Self:
         actual = len(self._messages())
         if actual != expected:
@@ -272,19 +218,19 @@ class AssertablePromptGet:
     def first_message(
         self, callback: Callable[[AssertablePromptMessage], Any] | None = None
     ) -> AssertablePromptMessage | Self:
-        return self._drill(0, callback)
+        return self._drill_message(0, callback)
 
     def message(
         self,
         index: int,
         callback: Callable[[AssertablePromptMessage], Any] | None = None,
     ) -> AssertablePromptMessage | Self:
-        return self._drill(index, callback)
+        return self._drill_message(index, callback)
 
     def last_message(
         self, callback: Callable[[AssertablePromptMessage], Any] | None = None
     ) -> AssertablePromptMessage | Self:
-        return self._drill(-1, callback)
+        return self._drill_message(-1, callback)
 
     def every_message(self, callback: Callable[[AssertablePromptMessage], Any]) -> Self:
         for idx, message in enumerate(self._messages()):

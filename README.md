@@ -643,16 +643,17 @@ AssertableMCP(payload).lists_prompts()\
 
 # Rendered messages
 AssertableMCP(payload).prompt("code_review")\
+    .succeeds()\
     .with_message_count(1)\
-    .first_message().is_from_user().has_text_content()
+    .first_message().is_from_user().content().is_not_empty()
 
-# Multi-modal message content (dual-mode chain)
+# Multi-modal message content (dual-mode chain through content())
 AssertableMCP(payload).prompt("review")\
-    .first_message().is_image().with_mime_type("image/png").with_base64_data()
+    .first_message().content().with_mime_type("image/png").with_base64_data()
 
 # Or via callback (parent chain continues)
 AssertableMCP(payload).prompt("review")\
-    .first_message(lambda m: m.is_text(lambda t: t.text_contains("review")))\
+    .first_message(lambda m: m.content(lambda c: c.with_text_containing("review")))\
     .with_message_count(1)
 
 # Server rejected the get with invalid params
@@ -663,7 +664,7 @@ AssertableMCP(payload).prompt("review")\
 
 #### Method catalog
 
-The MCP module exposes five assertable types, each scoped to a different MCP structure. Navigate between them with `lists_tools()`, `tool(name)`, the `contains_tool` / `every_tool` callbacks (yielding `AssertableToolDef`), and the `content` callback (yielding `AssertableContent`).
+The MCP module is navigable from `AssertableMCP` (envelope) → list classes (`AssertableToolList`, `AssertablePromptList`) → per-invocation classes (`AssertableToolCall`, `AssertablePromptGet`) → per-item classes (`AssertableToolDef`, `AssertablePromptDef`, `AssertablePromptMessage`) → `AssertableContent` for individual content blocks. `AssertableContent` carries all type-aware assertions in one class: methods like `with_text` / `with_mime_type` / `with_uri` validate the block type implicitly before checking the value (auto-dispatching across compatible types where the wire format differs, e.g. text vs embedded resource text). Drill-in methods (`content(...)`, `first_message(...)`, etc.) are **dual-mode**: called without a callback they return the child for direct chaining; called with a callback they invoke it and return Self for parent-chain continuation — same pattern as `assert_json` / `assert_html`.
 
 **`AssertableMCP`** — top-level envelope (JSON-RPC response):
 
@@ -714,58 +715,24 @@ The MCP module exposes five assertable types, each scoped to a different MCP str
 | `returns_content_count(n)`                          | Asserts the number of content blocks                                     |
 | `returns_structured(expected)`                      | Asserts `structuredContent` equals expected                              |
 | `content(index, callback=None)`                     | Dual-mode: scopes into `AssertableContent`; with callback returns Self   |
-| `is_text(index, callback=None)`                     | Typed shortcut: asserts block is text + scopes into `AssertableTextContent` |
-| `is_image(index, callback=None)`                    | Typed shortcut: asserts block is image + scopes into `AssertableImageContent` |
-| `is_audio(index, callback=None)`                    | Typed shortcut: asserts block is audio + scopes into `AssertableAudioContent` |
-| `is_resource_link(index, callback=None)`            | Typed shortcut: asserts block is resource_link + scopes into `AssertableResourceLinkContent` |
-| `is_resource(index, callback=None)`                 | Typed shortcut: asserts block is resource + scopes into `AssertableResourceContent` |
 | `reports_tool_error()`                              | Asserts the call returned `isError=true` (tool-level error)              |
 | `with_message_containing(substr)`                   | Asserts the error message contains a substring                           |
 | `is_rejected_as_unknown_tool()`                     | Asserts JSON-RPC `-32601` or `-32602` with "unknown tool" message        |
 | `is_rejected_with_invalid_params()`                 | Asserts JSON-RPC `-32602`                                                |
 
-**`AssertableContent`** — polymorphic discriminator (received via `content` callback or chain). Dual-mode `is_<type>(cb=None)` returns the typed subclass when called without a callback, runs the callback and returns Self when one is provided:
+**`AssertableContent`** — a single content block (received via `content(...)` callback or chain). All value assertions check the block type implicitly; `with_text` / `with_mime_type` / `with_uri` auto-dispatch across compatible types (e.g. `with_uri` works on both `resource_link` and embedded `resource`):
 
-| Method                                                                                            | Purpose                                                                  |
-|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| `is_text(callback=None)`                                                                          | Scopes into `AssertableTextContent`                                      |
-| `is_image(callback=None)`                                                                         | Scopes into `AssertableImageContent`                                     |
-| `is_audio(callback=None)`                                                                         | Scopes into `AssertableAudioContent`                                     |
-| `is_resource_link(callback=None)`                                                                 | Scopes into `AssertableResourceLinkContent`                              |
-| `is_resource(callback=None)`                                                                      | Scopes into `AssertableResourceContent`                                  |
-
-**`AssertableTextContent`** — text block:
-
-| Method                       | Purpose                                                       |
-|------------------------------|---------------------------------------------------------------|
-| `text_equals(expected)`      | Asserts the text exactly matches                              |
-| `text_contains(substr)`      | Asserts the text contains a substring                         |
-| `is_not_empty()`             | Asserts the text is truthy (non-empty)                        |
-
-**`AssertableImageContent`** / **`AssertableAudioContent`** — binary media block:
-
-| Method                       | Purpose                                                       |
-|------------------------------|---------------------------------------------------------------|
-| `with_mime_type(expected)`   | Asserts the block's mime type                                 |
-| `with_base64_data()`         | Asserts `data` is a non-empty valid base64 string             |
-
-**`AssertableResourceLinkContent`** — resource link block:
-
-| Method                       | Purpose                                                       |
-|------------------------------|---------------------------------------------------------------|
-| `with_uri(expected)`         | Asserts the link URI                                          |
-| `named(expected)`            | Asserts the link's `name` field                               |
-| `with_mime_type(expected)`   | Asserts the link's mime type                                  |
-
-**`AssertableResourceContent`** — embedded resource block (the `resource: {uri, ...}` inner object is exposed as flat attributes):
-
-| Method                            | Purpose                                                       |
-|-----------------------------------|---------------------------------------------------------------|
-| `with_uri(expected)`              | Asserts the embedded resource URI                             |
-| `with_mime_type(expected)`        | Asserts the embedded resource mime type                       |
-| `with_text(expected)`             | Asserts the embedded `text` field exactly matches             |
-| `with_text_containing(substr)`    | Asserts the embedded `text` contains a substring              |
-| `with_blob_data()`                | Asserts the embedded `blob` is non-empty valid base64         |
+| Method                            | Compatible types                                  | Purpose                                                       |
+|-----------------------------------|---------------------------------------------------|---------------------------------------------------------------|
+| `is_text()` / `is_image()` / `is_audio()` / `is_resource_link()` / `is_resource()` | — | Standalone type guard (just validates the block type, returns Self) |
+| `with_text(expected)`             | text, resource                                    | Asserts the text payload exactly matches                      |
+| `with_text_containing(substr)`    | text, resource                                    | Asserts the text payload contains a substring                 |
+| `is_not_empty()`                  | text, resource, image, audio                      | Asserts the block carries a payload (text, embedded text/blob, or binary data) |
+| `with_mime_type(expected)`        | image, audio, resource_link, resource             | Asserts the block's mime type                                 |
+| `with_base64_data()`              | image, audio                                      | Asserts `data` is a non-empty valid base64 string             |
+| `with_blob_data()`                | resource                                          | Asserts the embedded `blob` is a non-empty valid base64 string |
+| `with_uri(expected)`              | resource_link, resource                           | Asserts the URI (auto-dispatches between top-level `uri` and embedded `resource.uri`) |
+| `named(expected)`                 | resource_link, resource                           | Asserts the `name` field (auto-dispatches between top-level and embedded) |
 
 **`AssertablePromptList`** — `prompts/list` result:
 
@@ -790,6 +757,7 @@ The MCP module exposes five assertable types, each scoped to a different MCP str
 
 | Method                                         | Purpose                                                                  |
 |------------------------------------------------|--------------------------------------------------------------------------|
+| `succeeds()`                                   | Asserts the response is a valid `prompts/get` result (no protocol error) |
 | `with_description(expected)`                   | Asserts the `description` field exactly matches                          |
 | `with_description_containing(substr)`          | Asserts the `description` contains a substring                           |
 | `with_message_count(n)`                        | Asserts the messages list has exactly `n` items                          |
@@ -805,15 +773,7 @@ The MCP module exposes five assertable types, each scoped to a different MCP str
 | Method                                | Purpose                                                                  |
 |---------------------------------------|--------------------------------------------------------------------------|
 | `is_from_user()` / `is_from_assistant()` | Asserts the message role                                              |
-| `has_text_content()`                  | Asserts content is text and non-empty                                    |
-| `with_text_content(expected)`         | Asserts content is text and exactly matches                              |
-| `with_text_containing(substr)`        | Asserts content is text and contains a substring                         |
 | `content(callback=None)`              | Dual-mode: scopes into `AssertableContent` (single content per message)  |
-| `is_text(callback=None)`              | Typed shortcut: asserts content is text + scopes into `AssertableTextContent` |
-| `is_image(callback=None)`             | Typed shortcut: asserts content is image + scopes into `AssertableImageContent` |
-| `is_audio(callback=None)`             | Typed shortcut: asserts content is audio + scopes into `AssertableAudioContent` |
-| `is_resource_link(callback=None)`     | Typed shortcut: asserts content is resource_link + scopes into `AssertableResourceLinkContent` |
-| `is_resource(callback=None)`          | Typed shortcut: asserts content is resource + scopes into `AssertableResourceContent` |
 
 #### Building requests with `MessageBuilder`
 
@@ -890,7 +850,7 @@ Content-block scoping for richer tool responses:
 ```python
 response.assert_mcp(lambda m: m.tool("render")
     .succeeds()
-    .content(0, lambda c: c.is_text().text_equals("ok"))
+    .content(0, lambda c: c.is_text().with_text("ok"))
     .content(1, lambda c: c.is_image().with_mime_type("image/png").with_base64_data())
 )
 ```
