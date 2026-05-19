@@ -190,7 +190,7 @@ def test_tool_content_scope_should_pass_when_callback_validates_block():
     payload = _success_call(
         content=[{"type": "text", "text": "hi"}, {"type": "image", "mimeType": "image/png", "data": "Zm9v"}]
     )
-    AssertableMCP(payload).tool("multi").content(0, lambda c: c.is_text().text_equals("hi"))
+    AssertableMCP(payload).tool("multi").content(0, lambda c: c.is_text().with_text("hi"))
 
 
 def test_tool_content_scope_should_raise_when_index_out_of_range():
@@ -211,7 +211,7 @@ def test_tool_content_should_return_assertable_content_when_no_callback():
 
 def test_tool_content_chain_should_work_without_callback():
     payload = _success_call(content=[{"type": "text", "text": "hi"}])
-    AssertableMCP(payload).tool("x").content(0).is_text().text_equals("hi")
+    AssertableMCP(payload).tool("x").content(0).is_text().with_text("hi")
 
 
 def test_tool_content_no_callback_should_raise_when_index_out_of_range():
@@ -232,12 +232,12 @@ def test_tool_is_text_should_return_typed_text_content_when_no_callback():
 
 def test_tool_is_text_should_chain_text_assertions_without_callback():
     payload = _success_call(content=[{"type": "text", "text": "72°F"}])
-    AssertableMCP(payload).tool("x").is_text(0).text_equals("72°F")
+    AssertableMCP(payload).tool("x").is_text(0).with_text("72°F")
 
 
 def test_tool_is_text_should_invoke_callback_and_chain_back_to_tool_call():
     payload = _success_call(content=[{"type": "text", "text": "hi"}])
-    AssertableMCP(payload).tool("x").is_text(0, lambda t: t.text_equals("hi")).returns_content_count(1)
+    AssertableMCP(payload).tool("x").is_text(0, lambda t: t.with_text("hi")).returns_content_count(1)
 
 
 def test_tool_is_text_should_raise_when_block_is_not_text():

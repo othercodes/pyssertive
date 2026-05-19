@@ -126,6 +126,8 @@ class AssertableToolCall:
                 f"({self._error.get('code')}): {self._error.get('message')!r}"
             )
         if self._result is None:
+            # MCP methods never return `result: null` — every method has a typed result shape
+            # (even `ping` returns `{}`). Treating null as malformed catches server bugs early.
             raise AssertionError(f"Tool '{self._name}' response has no result payload")
         return self._result
 
@@ -195,7 +197,7 @@ class AssertableToolCall:
         blocks = self._content_blocks()
         if index >= len(blocks) or index < -len(blocks):
             raise AssertionError(f"Tool '{self._name}' content index {index} out of range (len={len(blocks)})")
-        return AssertableContent(blocks[index], index=index)
+        return AssertableContent(blocks[index], label=f"Tool '{self._name}' content[{index}]")
 
     def content(
         self,

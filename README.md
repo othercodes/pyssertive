@@ -643,8 +643,9 @@ AssertableMCP(payload).lists_prompts()\
 
 # Rendered messages
 AssertableMCP(payload).prompt("code_review")\
+    .succeeds()\
     .with_message_count(1)\
-    .first_message().is_from_user().has_text_content()
+    .first_message().is_from_user().has_text()
 
 # Multi-modal message content (dual-mode chain)
 AssertableMCP(payload).prompt("review")\
@@ -652,7 +653,7 @@ AssertableMCP(payload).prompt("review")\
 
 # Or via callback (parent chain continues)
 AssertableMCP(payload).prompt("review")\
-    .first_message(lambda m: m.is_text(lambda t: t.text_contains("review")))\
+    .first_message(lambda m: m.is_text(lambda t: t.with_text_containing("review")))\
     .with_message_count(1)
 
 # Server rejected the get with invalid params
@@ -663,7 +664,7 @@ AssertableMCP(payload).prompt("review")\
 
 #### Method catalog
 
-The MCP module exposes five assertable types, each scoped to a different MCP structure. Navigate between them with `lists_tools()`, `tool(name)`, the `contains_tool` / `every_tool` callbacks (yielding `AssertableToolDef`), and the `content` callback (yielding `AssertableContent`).
+The MCP module is navigable from `AssertableMCP` (envelope) → list classes (`AssertableToolList`, `AssertablePromptList`) → per-invocation classes (`AssertableToolCall`, `AssertablePromptGet`) → per-item classes inside lists (`AssertableToolDef`, `AssertablePromptDef`) and per-message inside prompts (`AssertablePromptMessage`) → typed content blocks (`AssertableTextContent`, `AssertableImageContent`, `AssertableAudioContent`, `AssertableResourceLinkContent`, `AssertableResourceContent`) reached via the polymorphic `AssertableContent` discriminator or via the `is_<type>(...)` typed shortcuts on `AssertableToolCall` / `AssertablePromptMessage`. Drill-in methods are **dual-mode**: called without a callback they return the typed child for direct chaining; called with a callback they invoke it and return Self for parent-chain continuation — same pattern as `assert_json` / `assert_html`.
 
 **`AssertableMCP`** — top-level envelope (JSON-RPC response):
 
@@ -738,8 +739,8 @@ The MCP module exposes five assertable types, each scoped to a different MCP str
 
 | Method                       | Purpose                                                       |
 |------------------------------|---------------------------------------------------------------|
-| `text_equals(expected)`      | Asserts the text exactly matches                              |
-| `text_contains(substr)`      | Asserts the text contains a substring                         |
+| `with_text(expected)`        | Asserts the text exactly matches                              |
+| `with_text_containing(substr)` | Asserts the text contains a substring                       |
 | `is_not_empty()`             | Asserts the text is truthy (non-empty)                        |
 
 **`AssertableImageContent`** / **`AssertableAudioContent`** — binary media block:
@@ -790,6 +791,7 @@ The MCP module exposes five assertable types, each scoped to a different MCP str
 
 | Method                                         | Purpose                                                                  |
 |------------------------------------------------|--------------------------------------------------------------------------|
+| `succeeds()`                                   | Asserts the response is a valid `prompts/get` result (no protocol error) |
 | `with_description(expected)`                   | Asserts the `description` field exactly matches                          |
 | `with_description_containing(substr)`          | Asserts the `description` contains a substring                           |
 | `with_message_count(n)`                        | Asserts the messages list has exactly `n` items                          |
@@ -805,8 +807,8 @@ The MCP module exposes five assertable types, each scoped to a different MCP str
 | Method                                | Purpose                                                                  |
 |---------------------------------------|--------------------------------------------------------------------------|
 | `is_from_user()` / `is_from_assistant()` | Asserts the message role                                              |
-| `has_text_content()`                  | Asserts content is text and non-empty                                    |
-| `with_text_content(expected)`         | Asserts content is text and exactly matches                              |
+| `has_text()`                          | Asserts content is text and non-empty                                    |
+| `with_text(expected)`                 | Asserts content is text and exactly matches                              |
 | `with_text_containing(substr)`        | Asserts content is text and contains a substring                         |
 | `content(callback=None)`              | Dual-mode: scopes into `AssertableContent` (single content per message)  |
 | `is_text(callback=None)`              | Typed shortcut: asserts content is text + scopes into `AssertableTextContent` |
@@ -890,7 +892,7 @@ Content-block scoping for richer tool responses:
 ```python
 response.assert_mcp(lambda m: m.tool("render")
     .succeeds()
-    .content(0, lambda c: c.is_text().text_equals("ok"))
+    .content(0, lambda c: c.is_text().with_text("ok"))
     .content(1, lambda c: c.is_image().with_mime_type("image/png").with_base64_data())
 )
 ```

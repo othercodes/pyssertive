@@ -109,7 +109,7 @@ def test_first_message_should_invoke_callback_and_return_self():
 
 def test_first_message_chain_should_work_without_callback():
     payload = _get_response([_user_text("hi")])
-    AssertableMCP(payload).prompt("x").first_message().is_from_user().has_text_content()
+    AssertableMCP(payload).prompt("x").first_message().is_from_user().has_text()
 
 
 def test_first_message_should_raise_when_messages_list_empty():
@@ -200,32 +200,32 @@ def test_message_is_from_assistant_should_raise_when_role_user():
 # --- AssertablePromptMessage: text shortcuts ---
 
 
-def test_message_has_text_content_should_pass_when_text_truthy():
+def test_message_has_text_should_pass_when_text_truthy():
     payload = _get_response([_user_text("hi")])
-    AssertableMCP(payload).prompt("x").first_message(lambda m: m.has_text_content())
+    AssertableMCP(payload).prompt("x").first_message(lambda m: m.has_text())
 
 
-def test_message_has_text_content_should_raise_when_text_empty():
+def test_message_has_text_should_raise_when_text_empty():
     payload = _get_response([{"role": "user", "content": {"type": "text", "text": ""}}])
     with pytest.raises(AssertionError, match="empty"):
-        AssertableMCP(payload).prompt("x").first_message(lambda m: m.has_text_content())
+        AssertableMCP(payload).prompt("x").first_message(lambda m: m.has_text())
 
 
-def test_message_has_text_content_should_raise_when_content_not_text():
+def test_message_has_text_should_raise_when_content_not_text():
     payload = _get_response([{"role": "user", "content": {"type": "image", "data": "Zm9v"}}])
     with pytest.raises(AssertionError, match="expected"):
-        AssertableMCP(payload).prompt("x").first_message(lambda m: m.has_text_content())
+        AssertableMCP(payload).prompt("x").first_message(lambda m: m.has_text())
 
 
-def test_message_with_text_content_should_pass_when_matches():
+def test_message_with_text_should_pass_when_matches():
     payload = _get_response([_user_text("expected text")])
-    AssertableMCP(payload).prompt("x").first_message(lambda m: m.with_text_content("expected text"))
+    AssertableMCP(payload).prompt("x").first_message(lambda m: m.with_text("expected text"))
 
 
-def test_message_with_text_content_should_raise_when_differs():
+def test_message_with_text_should_raise_when_differs():
     payload = _get_response([_user_text("other")])
     with pytest.raises(AssertionError, match="text"):
-        AssertableMCP(payload).prompt("x").first_message(lambda m: m.with_text_content("expected"))
+        AssertableMCP(payload).prompt("x").first_message(lambda m: m.with_text("expected"))
 
 
 def test_message_with_text_containing_should_pass_when_substring_present():
@@ -252,22 +252,22 @@ def test_message_content_should_return_assertable_content_when_no_callback():
 
 def test_message_content_chain_should_work_without_callback():
     payload = _get_response([_user_text("hi")])
-    AssertableMCP(payload).prompt("x").first_message().content().is_text().text_equals("hi")
+    AssertableMCP(payload).prompt("x").first_message().content().is_text().with_text("hi")
 
 
 def test_message_content_should_invoke_callback_and_return_self():
     payload = _get_response([_user_text("hi")])
-    AssertableMCP(payload).prompt("x").first_message(lambda m: m.content(lambda c: c.is_text().text_equals("hi")))
+    AssertableMCP(payload).prompt("x").first_message(lambda m: m.content(lambda c: c.is_text().with_text("hi")))
 
 
 def test_message_is_text_should_chain_without_callback():
     payload = _get_response([_user_text("hi")])
-    AssertableMCP(payload).prompt("x").first_message().is_text().text_equals("hi")
+    AssertableMCP(payload).prompt("x").first_message().is_text().with_text("hi")
 
 
 def test_message_is_text_should_invoke_callback_and_chain_back_to_message():
     payload = _get_response([_user_text("hi")])
-    AssertableMCP(payload).prompt("x").first_message(lambda m: m.is_text(lambda t: t.text_equals("hi")))
+    AssertableMCP(payload).prompt("x").first_message(lambda m: m.is_text(lambda t: t.with_text("hi")))
 
 
 def test_message_is_text_should_raise_when_content_not_text():
@@ -329,7 +329,7 @@ def test_message_should_raise_when_message_is_not_a_dict():
 def test_message_content_should_raise_when_content_field_is_not_a_dict():
     payload = _get_response([{"role": "user", "content": "not-a-dict"}])
     with pytest.raises(AssertionError, match="content is not a dict"):
-        AssertableMCP(payload).prompt("x").first_message().has_text_content()
+        AssertableMCP(payload).prompt("x").first_message().has_text()
 
 
 def test_prompt_should_raise_when_envelope_has_no_result_payload():
@@ -365,6 +365,21 @@ def test_prompt_should_raise_when_calling_success_helper_on_error_response():
     payload = _error_call(-32602, "bad")
     with pytest.raises(AssertionError, match="protocol error"):
         AssertableMCP(payload).prompt("x").with_message_count(1)
+
+
+def test_prompt_succeeds_should_pass_when_result_present():
+    payload = _get_response([_user_text("hi")])
+    AssertableMCP(payload).prompt("x").succeeds()
+
+
+def test_prompt_succeeds_should_raise_when_error_envelope():
+    with pytest.raises(AssertionError, match="protocol error"):
+        AssertableMCP(_error_call(-32602)).prompt("x").succeeds()
+
+
+def test_prompt_succeeds_should_chain_back_to_self():
+    payload = _get_response([_user_text("hi")])
+    AssertableMCP(payload).prompt("x").succeeds().with_message_count(1)
 
 
 def test_prompt_should_raise_when_calling_error_helper_on_success_response():
