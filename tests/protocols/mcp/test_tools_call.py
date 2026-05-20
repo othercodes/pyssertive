@@ -190,9 +190,36 @@ def test_tool_content_scope_should_pass_when_callback_validates_block():
     payload = _success_call(
         content=[{"type": "text", "text": "hi"}, {"type": "image", "mimeType": "image/png", "data": "Zm9v"}]
     )
-    AssertableMCP(payload).tool("multi").content(0, lambda c: c.is_text().text_equals("hi"))
+    AssertableMCP(payload).tool("multi").content(0, lambda c: c.is_text().with_text("hi"))
 
 
 def test_tool_content_scope_should_raise_when_index_out_of_range():
     with pytest.raises(AssertionError, match="out of range"):
         AssertableMCP(_success_call()).tool("multi").content(99, lambda c: c.is_text())
+
+
+# --- dual-mode content() (cb optional) ---
+
+
+def test_tool_content_should_return_assertable_content_when_no_callback():
+    from pyssertive.protocols.mcp.content import AssertableContent
+
+    payload = _success_call(content=[{"type": "text", "text": "hi"}])
+    result = AssertableMCP(payload).tool("x").content(0)
+    assert isinstance(result, AssertableContent)
+
+
+def test_tool_content_chain_should_work_without_callback():
+    payload = _success_call(content=[{"type": "text", "text": "hi"}])
+    AssertableMCP(payload).tool("x").content(0).is_text().with_text("hi")
+
+
+def test_tool_content_no_callback_should_raise_when_index_out_of_range():
+    with pytest.raises(AssertionError, match="out of range"):
+        AssertableMCP(_success_call()).tool("multi").content(99)
+
+
+def test_tool_content_should_resolve_negative_index_in_label():
+    payload = _success_call(content=[{"type": "text", "text": "a"}, {"type": "text", "text": "b"}])
+    with pytest.raises(AssertionError, match=r"content\[1\]"):
+        AssertableMCP(payload).tool("x").content(-1).with_text("wrong")

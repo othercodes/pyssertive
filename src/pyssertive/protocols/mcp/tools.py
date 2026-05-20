@@ -119,6 +119,8 @@ class AssertableToolCall:
                 f"({self._error.get('code')}): {self._error.get('message')!r}"
             )
         if self._result is None:
+            # MCP methods never return `result: null` — every method has a typed result shape
+            # (even `ping` returns `{}`). Treating null as malformed catches server bugs early.
             raise AssertionError(f"Tool '{self._name}' response has no result payload")
         return self._result
 
@@ -184,11 +186,22 @@ class AssertableToolCall:
             raise AssertionError(f"Tool '{self._name}' structuredContent: expected {expected!r}, got {actual!r}")
         return self
 
-    def content(self, index: int, callback: Callable[[AssertableContent], Any]) -> Self:
+    def _content_at(self, index: int) -> AssertableContent:
         blocks = self._content_blocks()
         if index >= len(blocks) or index < -len(blocks):
             raise AssertionError(f"Tool '{self._name}' content index {index} out of range (len={len(blocks)})")
-        callback(AssertableContent(blocks[index], index=index))
+        actual_index = index if index >= 0 else len(blocks) + index
+        return AssertableContent(blocks[index], label=f"Tool '{self._name}' content[{actual_index}]")
+
+    def content(
+        self,
+        index: int,
+        callback: Callable[[AssertableContent], Any] | None = None,
+    ) -> AssertableContent | Self:
+        typed = self._content_at(index)
+        if callback is None:
+            return typed
+        callback(typed)
         return self
 
     def reports_tool_error(self) -> Self:

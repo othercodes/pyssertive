@@ -152,3 +152,26 @@ def test_because_message_equals_should_raise_when_message_differs():
 def test_because_message_equals_should_raise_when_no_error_envelope():
     with pytest.raises(AssertionError, match="requires an error envelope"):
         AssertableMCP(_success()).because_message_equals("anything")
+
+
+def test_is_prompts_list_changed_notification_should_pass_when_method_matches_and_no_id():
+    payload = {"jsonrpc": "2.0", "method": "notifications/prompts/list_changed"}
+    AssertableMCP(payload).is_prompts_list_changed_notification()
+
+
+def test_is_prompts_list_changed_notification_should_raise_when_method_differs():
+    payload = {"jsonrpc": "2.0", "method": "notifications/tools/list_changed"}
+    with pytest.raises(AssertionError, match="notifications/prompts/list_changed"):
+        AssertableMCP(payload).is_prompts_list_changed_notification()
+
+
+def test_is_prompts_list_changed_notification_should_raise_when_envelope_has_id():
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "notifications/prompts/list_changed"}
+    with pytest.raises(AssertionError, match="no 'id' field"):
+        AssertableMCP(payload).is_prompts_list_changed_notification()
+
+
+def test_is_prompts_list_changed_notification_should_raise_when_method_absent():
+    payload = {"jsonrpc": "2.0", "result": {}}
+    with pytest.raises(AssertionError, match="notifications/prompts/list_changed"):
+        AssertableMCP(payload).is_prompts_list_changed_notification()
