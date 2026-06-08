@@ -39,6 +39,15 @@ dependencies = [
 [project.optional-dependencies]
 django = ["Django>=4.2"]
 httpx = ["httpx>=0.28.1"]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+    # Optional adapters are imported by mkdocstrings to render the API reference
+    # for the Django/httpx integration modules.
+    "Django>=4.2",
+    "httpx>=0.28.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/othercodes/pyssertive"

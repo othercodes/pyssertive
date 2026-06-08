@@ -135,6 +135,50 @@ jobs:
         with:
           print-hash: true
 
+  deploy-docs:
+    name: Deploy Docs
+    runs-on: ubuntu-latest
+    needs: [publish-pypi]
+
+    permissions:
+      contents: read
+      pages: write # native GitHub Pages deployment (no gh-pages branch)
+      id-token: write # OIDC token for actions/deploy-pages
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # hatch-vcs resolves the version from the tag
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install docs dependencies
+        run: uv sync --extra docs
+
+      - name: Build docs (strict)
+        run: uv run mkdocs build --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
