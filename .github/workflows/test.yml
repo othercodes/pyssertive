@@ -68,6 +68,31 @@ jobs:
       - name: Run mypy
         run: uv run mypy src/pyssertive
 
+  docs:
+    name: Docs (build --strict)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install docs dependencies
+        run: uv sync --extra docs
+
+      - name: Build docs (strict)
+        run: uv run mkdocs build --strict
+
   test-core:
     name: Test core (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -356,7 +381,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test-core, test-django, test-httpx, test-cross-adapter, coverage, sonarcloud]
+    needs: [lint, typecheck, docs, test-core, test-django, test-httpx, test-cross-adapter, coverage, sonarcloud]
     if: always()
 
     steps:
@@ -365,6 +390,7 @@ jobs:
           echo "===== Job Results ====="
           echo "Lint:                 ${{ needs.lint.result }}"
           echo "Typecheck:            ${{ needs.typecheck.result }}"
+          echo "Docs:                 ${{ needs.docs.result }}"
           echo "Test (core):          ${{ needs.test-core.result }}"
           echo "Test (django):        ${{ needs.test-django.result }}"
           echo "Test (httpx):         ${{ needs.test-httpx.result }}"
@@ -382,6 +408,11 @@ jobs:
 
           if [ "${{ needs.typecheck.result }}" != "success" ]; then
             echo "❌ Typecheck failed"
+            fail=1
+          fi
+
+          if [ "${{ needs.docs.result }}" != "success" ]; then
+            echo "❌ Docs build failed"
             fail=1
           fi
 

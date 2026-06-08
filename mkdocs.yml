@@ -1,0 +1,100 @@
+site_name: pyssertive
+site_description: >-
+  Fluent, chainable assertions for everything you test in Python. One vocabulary —
+  from a single value to HTTP responses, JSON, HTML, MCP, and architecture.
+site_url: https://othercodes.github.io/pyssertive/
+site_author: Unay Santisteban
+
+repo_url: https://github.com/othercodes/pyssertive
+repo_name: othercodes/pyssertive
+edit_uri: edit/master/docs/
+
+copyright: Copyright &copy; Unay Santisteban — MIT License
+
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tabs
+    - navigation.tracking
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_root_heading: true
+            show_source: true
+            members_order: source
+            # Render method signatures even when a docstring is not (yet) present —
+            # the type-annotated signature is useful on its own and docstrings are
+            # being filled in incrementally.
+            show_if_no_docstring: true
+            docstring_style: google
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - getting-started/installation.md
+      - getting-started/quickstart.md
+  - Guides:
+      - guides/expectations.md
+      - guides/http.md
+      - guides/json.md
+      - guides/html.md
+      - guides/database.md
+      - guides/architecture.md
+      - guides/mcp.md
+  - API Reference:
+      - api/index.md
+      - api/assertions.md
+      - api/formats.md
+      - api/http.md
+      - api/arch.md
+      - api/mcp.md
